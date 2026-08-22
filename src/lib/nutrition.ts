@@ -1,0 +1,48 @@
+import type { Macros, Meal } from '../types'
+
+// 日期工具：本地时区的 YYYY-MM-DD
+export function todayStr(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+export function formatDateShort(dateStr: string): string {
+  const [, m, d] = dateStr.split('-')
+  return `${Number(m)}/${Number(d)}`
+}
+
+// 根据宏量素估算卡路里（蛋白4 / 碳水4 / 脂肪9）
+export function estimateCalories(protein: number, carbs: number, fat: number): number {
+  return Math.round(protein * 4 + carbs * 4 + fat * 9)
+}
+
+// 汇总某天所有餐的宏量素
+export function sumMacros(meals: Meal[]): Macros {
+  return meals.reduce<Macros>(
+    (acc, m) => ({
+      protein: acc.protein + m.protein,
+      carbs: acc.carbs + m.carbs,
+      fat: acc.fat + m.fat,
+      calories: acc.calories + m.calories,
+    }),
+    { protein: 0, carbs: 0, fat: 0, calories: 0 },
+  )
+}
+
+export function pct(value: number, target: number): number {
+  if (target <= 0) return 0
+  return Math.min(100, Math.round((value / target) * 100))
+}
+
+// 保留一位小数
+export function round1(n: number): number {
+  return Math.round(n * 10) / 10
+}
+
+// 按分量换算营养值：base 对应 baseAmount，求 amount 对应的值
+export function scale(base: number, amount: number, baseAmount: number): number {
+  if (baseAmount <= 0) return base
+  return (base * amount) / baseAmount
+}

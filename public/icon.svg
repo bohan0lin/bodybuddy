@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#16a34a"/>
+  <g fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 哑铃 -->
+    <line x1="196" y1="196" x2="316" y2="316"/>
+    <rect x="120" y="150" width="46" height="92" rx="14" transform="rotate(45 143 196)"/>
+    <rect x="346" y="270" width="46" height="92" rx="14" transform="rotate(45 369 316)"/>
+  </g>
+  <text x="256" y="430" font-family="-apple-system, Segoe UI, sans-serif" font-size="84" font-weight="800" fill="#ffffff" text-anchor="middle">BB</text>
+</svg>

@@ -1,0 +1,389 @@
+:root {
+  /* ── 暗色奢华主题（Equinox / Apple 极简）─────────────── */
+  --bg: #0a0a0b;
+  --surface: #131316;
+  --surface-2: #1c1c20;
+  --text: #f2f0ec; /* 暖白 */
+  --text-dim: #a5a29b;
+  --text-muted: #6f6c65;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+
+  --accent: #c8a97e; /* 香槟金 */
+  --accent-dim: #8a765422;
+
+  /* 克制、去饱和的宏量素色 */
+  --protein: #cf8d78;
+  --carbs: #ccb079;
+  --fat: #93a889;
+  --cal: #c8a97e;
+
+  --radius: 20px;
+  --radius-sm: 12px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC',
+    'Microsoft YaHei', 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  font-feature-settings: 'tnum' 1, 'cv01' 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+select {
+  font-family: inherit;
+  font-size: 16px; /* 防止 iOS 聚焦缩放 */
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 数字统一等宽、纤细的显示体 */
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ── 布局 ───────────────────────────────────── */
+.app-shell {
+  max-width: 460px;
+  margin: 0 auto;
+  min-height: 100%;
+  background: var(--bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  flex: 1;
+  padding: 28px 20px calc(104px + env(safe-area-inset-bottom));
+}
+
+/* 小标题 eyebrow：全大写 + 字距 */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 22px;
+}
+
+.page-title {
+  font-size: 34px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  margin: 0 0 28px;
+  line-height: 1.05;
+}
+
+.page-title b {
+  font-weight: 600;
+}
+
+/* ── 面板（发丝边框，无重阴影）───────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  margin-bottom: 16px;
+}
+
+.card-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 18px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+  margin: 0;
+}
+
+/* ── 按钮 ───────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  transition: transform 0.1s ease, opacity 0.15s ease, background 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+}
+
+/* 主 CTA：暖白底深字，苹果式高对比 */
+.btn-primary {
+  background: var(--text);
+  color: #111;
+  border-color: var(--text);
+  font-weight: 600;
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: #1a1206;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-dim);
+}
+
+/* 全大写胶囊小按钮 */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── 表单 ───────────────────────────────────── */
+.field {
+  margin-bottom: 18px;
+}
+
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 14px 0;
+  border: none;
+  border-bottom: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  outline: none;
+  border-radius: 0;
+  transition: border-color 0.2s ease;
+}
+
+.field input::placeholder {
+  color: var(--text-muted);
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--accent);
+}
+
+/* 下拉框：闭合态与展开的选项列表都用卡片背景色 */
+.field select {
+  background: var(--surface);
+}
+
+.field select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.row {
+  display: flex;
+  gap: 18px;
+}
+
+.row > * {
+  flex: 1;
+}
+
+/* ── 底部导航 ───────────────────────────────── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 460px;
+  margin: 0 auto;
+  background: rgba(10, 10, 11, 0.82);
+  backdrop-filter: saturate(140%) blur(20px);
+  -webkit-backdrop-filter: saturate(140%) blur(20px);
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 12px 24px calc(14px + env(safe-area-inset-bottom));
+  z-index: 50;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.nav-item.active {
+  color: var(--text);
+}
+
+.nav-item .nav-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.nav-fab {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a1206;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 300;
+  transition: transform 0.1s ease;
+}
+
+.nav-fab:active {
+  transform: scale(0.94);
+}
+
+/* ── 数据显示 ───────────────────────────────── */
+.stat-xl {
+  font-size: 48px;
+  font-weight: 200;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.stat-lg {
+  font-size: 34px;
+  font-weight: 200;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.stat-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.delta {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.stat-unit {
+  white-space: nowrap;
+}
+
+.delta.down {
+  color: var(--fat);
+}
+
+.delta.up {
+  color: var(--protein);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 28px 0;
+  font-size: 14px;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.list-row:last-child {
+  border-bottom: none;
+}
