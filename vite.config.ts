@@ -16,13 +16,18 @@ function apiDevPlugin(): Plugin {
           for await (const c of req) chunks.push(c as Buffer)
           const body = JSON.parse(Buffer.concat(chunks).toString() || '{}')
 
-          // 通过 Vite 加载 TS 模块（自动转译、依赖走 node_modules）
-          const mod = await server.ssrLoadModule('/api/lib/ai.ts')
-
           let result: unknown
-          if (url.startsWith('/api/suggest')) result = await mod.suggestMeal(body)
-          else if (url.startsWith('/api/recognize')) result = await mod.recognizeFood(body.image, body.mediaType)
-          else return next()
+          if (url.startsWith('/api/suggest')) {
+            const mod = await server.ssrLoadModule('/api/lib/ai.ts')
+            result = await mod.suggestMeal(body)
+          } else if (url.startsWith('/api/recognize')) {
+            const mod = await server.ssrLoadModule('/api/lib/ai.ts')
+            result = await mod.recognizeFood(body.image, body.mediaType, body.lang)
+          } else if (url.startsWith('/api/lookup')) {
+            const mod = await server.ssrLoadModule('/api/lib/rag.ts')
+            const [match] = await mod.lookupFoods([body.name])
+            result = { match }
+          } else return next()
 
           res.setHeader('content-type', 'application/json')
           res.end(JSON.stringify(result))
@@ -44,6 +49,9 @@ export default defineConfig(({ mode }) => {
   if (env.GOOGLE_GENERATIVE_AI_API_KEY) process.env.GOOGLE_GENERATIVE_AI_API_KEY = env.GOOGLE_GENERATIVE_AI_API_KEY
   if (env.OPENAI_API_KEY) process.env.OPENAI_API_KEY = env.OPENAI_API_KEY
   if (env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY
+  // 供开发中间件里的 RAG 检索（服务端 Supabase 客户端）使用
+  if (env.VITE_SUPABASE_URL) process.env.VITE_SUPABASE_URL = env.VITE_SUPABASE_URL
+  if (env.VITE_SUPABASE_ANON_KEY) process.env.VITE_SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY
 
   return {
     plugins: [

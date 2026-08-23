@@ -3,6 +3,7 @@ import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
+import { lookupFoods } from './rag'
 
 // ══════════════════════════════════════════════════════════════
 // 切换 AI 只需改下面这一行 MODEL（对应的 key 放到 .env.local / Vercel 环境变量）：
@@ -150,5 +151,28 @@ ${nameRule}
     ],
   })
 
-  return { items: object.items }
+  // RAG 校准：命中营养库且为重量单位时，用库里的精准值按分量换算覆盖模型估算
+  let items = object.items
+  try {
+    const matches = await lookupFoods(items.map((it) => it.name))
+    const r1 = (n: number) => Math.round(n * 10) / 10
+    items = items.map((it, i) => {
+      const m = matches[i]
+      if (m && m.matched && (it.unit === 'g' || it.unit === 'ml') && it.amount > 0) {
+        const k = it.amount / m.baseAmount
+        return {
+          ...it,
+          protein: r1(m.protein * k),
+          carbs: r1(m.carbs * k),
+          fat: r1(m.fat * k),
+          calories: Math.round(m.calories * k),
+        }
+      }
+      return it
+    })
+  } catch (e) {
+    console.error('rag grounding failed', e)
+  }
+
+  return { items }
 }

@@ -55,6 +55,9 @@ export default function LogMeal() {
   const [recogItems, setRecogItems] = useState<RecogItem[]>([])
   const [recogError, setRecogError] = useState<string | null>(null)
 
+  const [looking, setLooking] = useState(false)
+  const [lookupMsg, setLookupMsg] = useState<string | null>(null)
+
   const autoCal = estimateCalories(+protein || 0, +carbs || 0, +fat || 0)
 
   const picks = useMemo(() => savedItems.filter((s) => s.kind === pickTab), [savedItems, pickTab])
@@ -135,6 +138,34 @@ export default function LogMeal() {
       setRecogError(err instanceof Error ? err.message : t('log.recogEmpty'))
     } finally {
       setRecognizing(false)
+    }
+  }
+
+  // 手动输入食物名 → 查营养库自动填营养值（保留用户输入的名字）
+  async function lookupName() {
+    const q = name.trim()
+    if (!q) return
+    setLooking(true)
+    setLookupMsg(null)
+    try {
+      type Match = { matched: boolean; unit: string; baseAmount: number; protein: number; carbs: number; fat: number; calories: number }
+      const { match } = await postJson<{ match: Match | null }>('/api/lookup', { name: q })
+      if (match && match.matched) {
+        setUnit(match.unit)
+        setAmount(String(match.baseAmount))
+        setProtein(String(match.protein))
+        setCarbs(String(match.carbs))
+        setFat(String(match.fat))
+        setCalories(String(match.calories))
+        base.current = { amount: match.baseAmount, p: match.protein, c: match.carbs, f: match.fat, cal: match.calories }
+        setLookupMsg(t('log.lookupHit'))
+      } else {
+        setLookupMsg(t('log.lookupMiss'))
+      }
+    } catch {
+      setLookupMsg(t('log.lookupMiss'))
+    } finally {
+      setLooking(false)
     }
   }
 
@@ -279,9 +310,20 @@ export default function LogMeal() {
 
       {/* 手动填写 */}
       <div className="card">
-        <div className="field">
+        <div className="field" style={{ marginBottom: 10 }}>
           <label>{t('log.foodName')}</label>
-          <input placeholder={t('log.foodNamePh')} value={name} onChange={(e) => setName(e.target.value)} />
+          <input placeholder={t('log.foodNamePh')} value={name} onChange={(e) => { setName(e.target.value); setLookupMsg(null) }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <button
+            className="chip"
+            onClick={lookupName}
+            disabled={looking || !name.trim()}
+            style={{ padding: '7px 14px', fontSize: 13, opacity: !name.trim() ? 0.5 : 1 }}
+          >
+            ⌕ {looking ? t('log.looking') : t('log.lookup')}
+          </button>
+          {lookupMsg && <span className="muted" style={{ fontSize: 12, color: 'var(--accent)' }}>{lookupMsg}</span>}
         </div>
 
         <div className="field">
