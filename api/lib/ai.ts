@@ -36,6 +36,7 @@ export interface SuggestInput {
   hour: number
   mode?: 'general' | 'library' // general=通用建议；library=从用户常用库里挑
   savedItems?: SavedItemLite[]
+  lang?: 'zh' | 'en'
 }
 
 // ── 饮食建议 ────────────────────────────────────────────────
@@ -48,8 +49,13 @@ export async function suggestMeal(input: SuggestInput): Promise<{ text: string }
   }
 
   const fromLibrary = input.mode === 'library'
+  const isEn = input.lang === 'en'
 
-  const commonRules = `- 用简体中文，语气专业、简洁、鼓励。
+  const langRule = isEn
+    ? '- Reply in English, professional, concise, and encouraging.'
+    : '- 用简体中文，语气专业、简洁、鼓励。'
+
+  const commonRules = `${langRule}
 - 开头一句点明剩余额度（热量与蛋白最重要）。
 - 结合当前时间（越晚越清淡、避免高碳水）。
 - 总长度 140 字以内，用简短分行；不要使用 markdown 标题或星号，用「·」作为项目符号。`
@@ -114,12 +120,18 @@ const recogSchema = z.object({
 export async function recognizeFood(
   imageBase64: string,
   mediaType: string,
+  lang?: 'zh' | 'en',
 ): Promise<{ items: RecognizedItem[] }> {
   const dataUrl = `data:${mediaType || 'image/jpeg'};base64,${imageBase64}`
+  const nameRule =
+    lang === 'en'
+      ? '- name in English, concise.'
+      : '- name 用简体中文简洁命名。'
 
   const system = `你是营养识别助手。识别图片中的主要食物，估算每种食物的分量与营养。
+${nameRule}
 - 最多 5 项，按主次排序。
-- amount/unit 估算可见分量（能称重的食物用 g，否则用「份」）。
+- amount/unit 估算可见分量（能称重的食物用 g，否则用「份」；英文界面可用 "serving"）。
 - 各营养值为「该分量」下的估算值。
 - 若图中没有可识别的食物，items 返回空数组。`
 

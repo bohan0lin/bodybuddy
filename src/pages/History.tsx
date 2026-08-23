@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
+import { useT } from '../lib/i18n'
 
 export default function History() {
   const { weightLogs } = useStore()
   const navigate = useNavigate()
+  const { t } = useT()
 
   const history = useMemo(
     () => [...weightLogs].sort((a, b) => b.date.localeCompare(a.date)),
@@ -18,13 +20,13 @@ export default function History() {
         onClick={() => navigate('/body')}
         style={{ padding: 0, marginBottom: 22, fontSize: 14, color: 'var(--text-dim)' }}
       >
-        ‹ 体重趋势
+        {t('common.backTrend')}
       </button>
 
       <div className="card">
-        <p className="card-label">历史记录</p>
+        <p className="card-label">{t('body.history')}</p>
         {history.length === 0 ? (
-          <div className="empty">还没有记录</div>
+          <div className="empty">{t('common.noRecords')}</div>
         ) : (
           history.map((w) => (
             <div key={w.id} className="list-row" style={{ justifyContent: 'space-between' }}>

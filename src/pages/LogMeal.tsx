@@ -4,7 +4,8 @@ import { useStore } from '../data/store'
 import { estimateCalories, round1, scale, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
-import { MEAL_LABELS, MEAL_TYPES, type MealType, type SavedItem, type SavedKind } from '../types'
+import { useT } from '../lib/i18n'
+import { MEAL_TYPES, type MealType, type SavedItem, type SavedKind } from '../types'
 
 // 拍照识别返回的单项
 type RecogItem = {
@@ -25,11 +26,13 @@ function guessMealType(): MealType {
   return 'snack'
 }
 
+// 单位存储用规范值，显示按语言本地化
 const UNITS = ['g', '份', 'ml', '个', '勺']
 
 export default function LogMeal() {
   const { addMeal, meals, deleteMeal, savedItems, addSavedItem, deleteSavedItem } = useStore()
   const navigate = useNavigate()
+  const { t, lang } = useT()
   const today = todayStr()
 
   const [type, setType] = useState<MealType>(guessMealType())
@@ -41,14 +44,12 @@ export default function LogMeal() {
   const [fat, setFat] = useState('')
   const [calories, setCalories] = useState('')
 
-  // 选中的常用食物基准：分量换算的参照。手动改营养值时清空（脱离换算）。
   const base = useRef<{ amount: number; p: number; c: number; f: number; cal: number } | null>(null)
 
   const [pickTab, setPickTab] = useState<SavedKind>('food')
   const [manageMode, setManageMode] = useState(false)
   const [saveToLib, setSaveToLib] = useState(false)
 
-  // 拍照识别
   const fileRef = useRef<HTMLInputElement>(null)
   const [recognizing, setRecognizing] = useState(false)
   const [recogItems, setRecogItems] = useState<RecogItem[]>([])
@@ -67,7 +68,14 @@ export default function LogMeal() {
     [savedItems],
   )
 
-  // 填入表单并激活分量换算（基准=该分量）
+  // 单位本地化显示（存储值保持规范）
+  const unitLabel = (u: string): string => {
+    if (u === '份') return t('unit.serving')
+    if (u === '个') return t('unit.piece')
+    if (u === '勺') return t('unit.spoon')
+    return u // g / ml 通用
+  }
+
   function fillForm(v: RecogItem) {
     setName(v.name)
     setUnit(v.unit)
@@ -79,7 +87,6 @@ export default function LogMeal() {
     base.current = { amount: v.amount, p: v.protein, c: v.carbs, f: v.fat, cal: v.calories }
   }
 
-  // 选中常用项
   function fillFrom(item: SavedItem) {
     fillForm({
       name: item.name,
@@ -92,30 +99,6 @@ export default function LogMeal() {
     })
   }
 
-  // 拍照 → 压缩 → Claude 识别 → 填表
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = '' // 允许重复选同一张
-    if (!file) return
-    setRecognizing(true)
-    setRecogError(null)
-    setRecogItems([])
-    try {
-      const { data, mediaType } = await fileToResizedBase64(file)
-      const { items } = await postJson<{ items: RecogItem[] }>('/api/recognize', { image: data, mediaType })
-      if (!items.length) setRecogError('没识别出食物，换个角度或光线再拍试试')
-      else {
-        setRecogItems(items)
-        fillForm(items[0])
-      }
-    } catch (err) {
-      setRecogError(err instanceof Error ? err.message : '识别失败')
-    } finally {
-      setRecognizing(false)
-    }
-  }
-
-  // 改分量 → 按基准自动换算营养
   function changeAmount(val: string) {
     setAmount(val)
     const a = parseFloat(val)
@@ -128,10 +111,31 @@ export default function LogMeal() {
     }
   }
 
-  // 手动修改营养值 → 脱离换算
   function editMacro(setter: (v: string) => void, val: string) {
     base.current = null
     setter(val)
+  }
+
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setRecognizing(true)
+    setRecogError(null)
+    setRecogItems([])
+    try {
+      const { data, mediaType } = await fileToResizedBase64(file)
+      const { items } = await postJson<{ items: RecogItem[] }>('/api/recognize', { image: data, mediaType, lang })
+      if (!items.length) setRecogError(t('log.recogEmpty'))
+      else {
+        setRecogItems(items)
+        fillForm(items[0])
+      }
+    } catch (err) {
+      setRecogError(err instanceof Error ? err.message : t('log.recogEmpty'))
+    } finally {
+      setRecognizing(false)
+    }
   }
 
   function handleSave() {
@@ -143,21 +147,11 @@ export default function LogMeal() {
     const amt = +amount || undefined
     addMeal({ date: todayStr(), type, name: name.trim(), amount: amt, unit, protein: p, carbs: c, fat: f, calories: cal })
     if (saveToLib) {
-      addSavedItem({
-        kind: pickTab,
-        name: name.trim(),
-        unit,
-        baseAmount: amt ?? 1,
-        protein: p,
-        carbs: c,
-        fat: f,
-        calories: cal,
-      })
+      addSavedItem({ kind: pickTab, name: name.trim(), unit, baseAmount: amt ?? 1, protein: p, carbs: c, fat: f, calories: cal })
     }
     navigate('/')
   }
 
-  // 快捷倍数：0.5 / 1 / 1.5 / 2 倍基准分量
   const quickAmounts = base.current
     ? [0.5, 1, 1.5, 2].map((k) => round1(base.current!.amount * k))
     : []
@@ -165,14 +159,7 @@ export default function LogMeal() {
   return (
     <div className="page">
       {/* 拍照识别 */}
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={onPhoto}
-        style={{ display: 'none' }}
-      />
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{ display: 'none' }} />
       <button
         className="card"
         style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', textAlign: 'left' }}
@@ -181,8 +168,8 @@ export default function LogMeal() {
       >
         <span style={{ fontSize: 24 }}>◐</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 500 }}>{recognizing ? '识别中…' : '拍照识别食物'}</div>
-          <div className="muted" style={{ fontSize: 12 }}>{recognizing ? 'AI 正在分析图片' : 'AI 估算营养并自动填入'}</div>
+          <div style={{ fontWeight: 500 }}>{recognizing ? t('log.recognizing') : t('log.photoTitle')}</div>
+          <div className="muted" style={{ fontSize: 12 }}>{recognizing ? t('log.analyzing') : t('log.photoSub')}</div>
         </div>
         <span className="dim">›</span>
       </button>
@@ -190,7 +177,7 @@ export default function LogMeal() {
       {/* 识别结果 */}
       {(recogItems.length > 0 || recogError) && (
         <div className="card">
-          <p className="card-label">识别结果</p>
+          <p className="card-label">{t('log.recogResult')}</p>
           {recogError ? (
             <div className="empty">{recogError}</div>
           ) : (
@@ -200,16 +187,16 @@ export default function LogMeal() {
                   <button onClick={() => fillForm(it)} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
                     <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {it.name}
-                      <span className="muted" style={{ fontWeight: 400 }}> · {it.amount}{it.unit}</span>
+                      <span className="muted" style={{ fontWeight: 400 }}> · {it.amount}{unitLabel(it.unit)}</span>
                     </div>
                     <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                      {it.calories} 千卡 · 蛋 {it.protein} 碳 {it.carbs} 脂 {it.fat}
+                      {it.calories} {t('today.kcal')} · {t('macro.protein')} {it.protein} {t('macro.carbs')} {it.carbs} {t('macro.fat')} {it.fat}
                     </div>
                   </button>
                   <span className="dim" style={{ fontSize: 20 }}>＋</span>
                 </div>
               ))}
-              <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>点任意一项填入下方，可再微调分量</p>
+              <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t('log.recogHint')}</p>
             </>
           )}
         </div>
@@ -220,24 +207,24 @@ export default function LogMeal() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <div style={{ display: 'flex', gap: 10 }}>
             <button className={'chip' + (pickTab === 'food' ? ' active' : '')} onClick={() => setPickTab('food')}>
-              常用食物
+              {t('log.freqFoods')}
             </button>
             <button className={'chip' + (pickTab === 'meal' ? ' active' : '')} onClick={() => setPickTab('meal')}>
-              我的套餐
+              {t('log.myMeals')}
             </button>
           </div>
           {picks.length > 0 && (
             <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setManageMode((v) => !v)}>
-              {manageMode ? '完成' : '管理'}
+              {manageMode ? t('common.done') : t('common.manage')}
             </button>
           )}
         </div>
 
         {picks.length === 0 ? (
           <div className="empty">
-            还没有常用{pickTab === 'food' ? '食物' : '套餐'}
+            {pickTab === 'food' ? t('log.noFreqFood') : t('log.noFreqMeal')}
             <br />
-            在下方填写后勾选「保存到常用」即可
+            {t('log.saveHint')}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -246,20 +233,15 @@ export default function LogMeal() {
                 <button onClick={() => !manageMode && fillFrom(item)} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
                   <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.name}
-                    <span className="muted" style={{ fontWeight: 400 }}> · {item.baseAmount}{item.unit}</span>
+                    <span className="muted" style={{ fontWeight: 400 }}> · {item.baseAmount}{unitLabel(item.unit)}</span>
                   </div>
                   <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                    {item.calories} 千卡 · 蛋 {item.protein} 碳 {item.carbs} 脂 {item.fat}
+                    {item.calories} {t('today.kcal')} · {t('macro.protein')} {item.protein} {t('macro.carbs')} {item.carbs} {t('macro.fat')} {item.fat}
                     {item.note ? ` · ${item.note}` : ''}
                   </div>
                 </button>
                 {manageMode ? (
-                  <button
-                    className="btn-ghost"
-                    style={{ color: 'var(--protein)', fontSize: 20, padding: 6 }}
-                    onClick={() => deleteSavedItem(item.id)}
-                    aria-label="删除"
-                  >
+                  <button className="btn-ghost" style={{ color: 'var(--protein)', fontSize: 20, padding: 6 }} onClick={() => deleteSavedItem(item.id)} aria-label={t('common.done')}>
                     −
                   </button>
                 ) : (
@@ -273,23 +255,23 @@ export default function LogMeal() {
 
       {/* 餐次 */}
       <div className="card">
-        <p className="card-label">餐次</p>
+        <p className="card-label">{t('log.mealType')}</p>
         <div style={{ display: 'flex', gap: 8 }}>
-          {MEAL_TYPES.map((t) => (
+          {MEAL_TYPES.map((mt) => (
             <button
-              key={t}
-              onClick={() => setType(t)}
+              key={mt}
+              onClick={() => setType(mt)}
               className="chip"
               style={{
                 flex: 1,
                 justifyContent: 'center',
-                background: type === t ? 'var(--surface-2)' : 'var(--surface)',
-                color: type === t ? 'var(--accent)' : 'var(--text)',
-                borderColor: type === t ? 'var(--accent)' : 'var(--line)',
-                fontWeight: type === t ? 600 : 400,
+                background: type === mt ? 'var(--surface-2)' : 'var(--surface)',
+                color: type === mt ? 'var(--accent)' : 'var(--text)',
+                borderColor: type === mt ? 'var(--accent)' : 'var(--line)',
+                fontWeight: type === mt ? 600 : 400,
               }}
             >
-              {MEAL_LABELS[t]}
+              {t('meal.' + mt)}
             </button>
           ))}
         </div>
@@ -298,25 +280,17 @@ export default function LogMeal() {
       {/* 手动填写 */}
       <div className="card">
         <div className="field">
-          <label>食物名称</label>
-          <input placeholder="例如：鸡胸肉" value={name} onChange={(e) => setName(e.target.value)} />
+          <label>{t('log.foodName')}</label>
+          <input placeholder={t('log.foodNamePh')} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
-        {/* 分量 */}
         <div className="field">
-          <label>分量</label>
-          <input
-            type="number"
-            inputMode="decimal"
-            placeholder="100"
-            value={amount}
-            onChange={(e) => changeAmount(e.target.value)}
-          />
+          <label>{t('log.amount')}</label>
+          <input type="number" inputMode="decimal" placeholder="100" value={amount} onChange={(e) => changeAmount(e.target.value)} />
         </div>
 
-        {/* 单位 —— 胶囊分段选择（替代下拉框） */}
         <div className="field">
-          <label>单位</label>
+          <label>{t('log.unit')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {UNITS.map((u) => (
               <button
@@ -333,63 +307,49 @@ export default function LogMeal() {
                   fontWeight: unit === u ? 600 : 400,
                 }}
               >
-                {u}
+                {unitLabel(u)}
               </button>
             ))}
           </div>
         </div>
 
-        {/* 快捷分量：基于选中常用食物的基准倍数 */}
         {quickAmounts.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, margin: '-4px 0 20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, margin: '4px 0 20px', flexWrap: 'wrap' }}>
             {quickAmounts.map((a) => (
-              <button
-                key={a}
-                className={'chip' + (+amount === a ? ' active' : '')}
-                style={{ padding: '6px 12px', fontSize: 13 }}
-                onClick={() => changeAmount(String(a))}
-              >
-                {a}
-                {unit}
+              <button key={a} className={'chip' + (+amount === a ? ' active' : '')} style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => changeAmount(String(a))}>
+                {a}{unitLabel(unit)}
               </button>
             ))}
           </div>
         )}
 
         {base.current && (
-          <p className="muted" style={{ fontSize: 12, margin: '-10px 0 16px', color: 'var(--accent)' }}>
-            营养值随分量自动换算 · 手动修改下方数值即可自定义
+          <p className="muted" style={{ fontSize: 12, margin: '-6px 0 16px', color: 'var(--accent)' }}>
+            {t('log.scaleHint')}
           </p>
         )}
 
         <div className="row">
           <div className="field">
-            <label>蛋白 (g)</label>
+            <label>{t('log.proteinG')}</label>
             <input type="number" inputMode="decimal" placeholder="0" value={protein} onChange={(e) => editMacro(setProtein, e.target.value)} />
           </div>
           <div className="field">
-            <label>碳水 (g)</label>
+            <label>{t('log.carbsG')}</label>
             <input type="number" inputMode="decimal" placeholder="0" value={carbs} onChange={(e) => editMacro(setCarbs, e.target.value)} />
           </div>
         </div>
         <div className="row">
           <div className="field">
-            <label>脂肪 (g)</label>
+            <label>{t('log.fatG')}</label>
             <input type="number" inputMode="decimal" placeholder="0" value={fat} onChange={(e) => editMacro(setFat, e.target.value)} />
           </div>
           <div className="field">
-            <label>热量 (千卡)</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              placeholder={autoCal ? `自动 ${autoCal}` : '0'}
-              value={calories}
-              onChange={(e) => editMacro(setCalories, e.target.value)}
-            />
+            <label>{t('log.kcalField')}</label>
+            <input type="number" inputMode="decimal" placeholder={autoCal ? t('log.autoCal', { n: autoCal }) : '0'} value={calories} onChange={(e) => editMacro(setCalories, e.target.value)} />
           </div>
         </div>
 
-        {/* 保存到常用 */}
         <button
           onClick={() => setSaveToLib((v) => !v)}
           style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '4px 0', color: saveToLib ? 'var(--accent)' : 'var(--text-dim)' }}
@@ -411,23 +371,23 @@ export default function LogMeal() {
             {saveToLib ? '✓' : ''}
           </span>
           <span style={{ fontSize: 14 }}>
-            保存到常用{pickTab === 'food' ? '食物' : '套餐'}
-            <span className="muted" style={{ fontSize: 12 }}>（按此分量为基准）</span>
+            {pickTab === 'food' ? t('log.saveToFreqFood') : t('log.saveToFreqMeal')}
+            <span className="muted" style={{ fontSize: 12 }}>{t('log.saveBasis')}</span>
           </span>
         </button>
       </div>
 
       <div className="row">
-        <button className="btn" onClick={() => navigate(-1)}>取消</button>
+        <button className="btn" onClick={() => navigate(-1)}>{t('common.cancel')}</button>
         <button className="btn btn-primary" onClick={handleSave} disabled={!name.trim()}>
-          保存记录
+          {t('log.saveRecord')}
         </button>
       </div>
 
       {/* 今日已记录 */}
       {todayMeals.length > 0 && (
         <div className="card" style={{ marginTop: 16 }}>
-          <p className="card-label">今日已记录</p>
+          <p className="card-label">{t('log.loggedToday')}</p>
           {todayMeals.map((m) => {
             const saved = savedMealNames.has(m.name)
             return (
@@ -435,37 +395,22 @@ export default function LogMeal() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {m.name}
-                    {m.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {m.amount}{m.unit}</span> : null}
+                    {m.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {m.amount}{unitLabel(m.unit ?? '')}</span> : null}
                   </div>
                   <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                    {MEAL_LABELS[m.type as MealType]} · {m.calories} 千卡 · 蛋 {m.protein} 碳 {m.carbs} 脂 {m.fat}
+                    {t('meal.' + m.type)} · {m.calories} {t('today.kcal')} · {t('macro.protein')} {m.protein} {t('macro.carbs')} {m.carbs} {t('macro.fat')} {m.fat}
                   </div>
                 </div>
                 <button
                   className="btn-ghost"
-                  title={saved ? '已在常用' : '收藏为套餐'}
                   style={{ fontSize: 18, padding: 6, color: saved ? 'var(--accent)' : 'var(--text-muted)' }}
                   onClick={() =>
-                    addSavedItem({
-                      kind: 'meal',
-                      name: m.name,
-                      unit: m.unit ?? '份',
-                      baseAmount: m.amount ?? 1,
-                      protein: m.protein,
-                      carbs: m.carbs,
-                      fat: m.fat,
-                      calories: m.calories,
-                    })
+                    addSavedItem({ kind: 'meal', name: m.name, unit: m.unit ?? '份', baseAmount: m.amount ?? 1, protein: m.protein, carbs: m.carbs, fat: m.fat, calories: m.calories })
                   }
                 >
                   {saved ? '★' : '☆'}
                 </button>
-                <button
-                  className="btn-ghost"
-                  aria-label="删除"
-                  style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }}
-                  onClick={() => deleteMeal(m.id)}
-                >
+                <button className="btn-ghost" aria-label={t('common.cancel')} style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteMeal(m.id)}>
                   ×
                 </button>
               </div>

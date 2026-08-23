@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { sumMacros, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
+import { useT } from '../lib/i18n'
 
 type Mode = 'library' | 'general'
 
 export default function AISuggest() {
   const { meals, profile, savedItems } = useStore()
   const navigate = useNavigate()
+  const { t, lang } = useT()
   const today = todayStr()
 
   const todayMeals = useMemo(() => meals.filter((m) => m.date === today), [meals, today])
@@ -21,10 +23,10 @@ export default function AISuggest() {
     fat: Math.max(0, Math.round(profile.targetFat - totals.fat)),
   }
   const remItems = [
-    { l: '热量', v: rem.calories, u: '' },
-    { l: '蛋白', v: rem.protein, u: 'g' },
-    { l: '碳水', v: rem.carbs, u: 'g' },
-    { l: '脂肪', v: rem.fat, u: 'g' },
+    { l: t('settings.calKcal'), v: rem.calories, u: '' },
+    { l: t('macro.protein'), v: rem.protein, u: 'g' },
+    { l: t('macro.carbs'), v: rem.carbs, u: 'g' },
+    { l: t('macro.fat'), v: rem.fat, u: 'g' },
   ]
 
   const [mode, setMode] = useState<Mode | null>(null)
@@ -47,6 +49,7 @@ export default function AISuggest() {
         meals: todayMeals.map((x) => ({ name: x.name, type: x.type })),
         hour: new Date().getHours(),
         mode: m,
+        lang,
         savedItems:
           m === 'library'
             ? savedItems.map((s) => ({
@@ -61,9 +64,9 @@ export default function AISuggest() {
               }))
             : undefined,
       })
-      setText(res.text || '暂时没有建议。')
+      setText(res.text || t('ai.noSuggestion'))
     } catch (e) {
-      setText('生成失败：' + (e instanceof Error ? e.message : '请稍后再试'))
+      setText(t('ai.failed', { msg: e instanceof Error ? e.message : t('ai.retryMsg') }))
     } finally {
       setLoading(false)
     }
@@ -76,12 +79,12 @@ export default function AISuggest() {
         onClick={() => navigate('/')}
         style={{ padding: 0, marginBottom: 18, fontSize: 14, color: 'var(--text-dim)' }}
       >
-        ‹ 今日
+        {t('common.backToday')}
       </button>
 
       {/* 还剩额度 */}
       <div className="card">
-        <p className="card-label">还剩额度</p>
+        <p className="card-label">{t('ai.remaining')}</p>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           {remItems.map((it) => (
             <div key={it.l} style={{ textAlign: 'center' }}>
@@ -89,10 +92,7 @@ export default function AISuggest() {
                 {it.v}
                 {it.u}
               </div>
-              <div
-                className="muted"
-                style={{ fontSize: 11, letterSpacing: '0.1em', marginTop: 6, textTransform: 'uppercase' }}
-              >
+              <div className="muted" style={{ fontSize: 11, letterSpacing: '0.06em', marginTop: 6 }}>
                 {it.l}
               </div>
             </div>
@@ -114,8 +114,8 @@ export default function AISuggest() {
             borderColor: mode === 'library' ? 'var(--accent)' : undefined,
           }}
         >
-          <span style={{ fontWeight: 600 }}>从我的常用</span>
-          <span style={{ fontSize: 12, opacity: 0.8 }}>食物 / 套餐里挑</span>
+          <span style={{ fontWeight: 600 }}>{t('ai.fromLibrary')}</span>
+          <span style={{ fontSize: 12, opacity: 0.8 }}>{t('ai.fromLibrarySub')}</span>
         </button>
         <button
           className="btn"
@@ -129,17 +129,17 @@ export default function AISuggest() {
             borderColor: mode === 'general' ? 'var(--accent)' : undefined,
           }}
         >
-          <span style={{ fontWeight: 600 }}>通用建议</span>
-          <span style={{ fontSize: 12, opacity: 0.8 }}>不限于常用</span>
+          <span style={{ fontWeight: 600 }}>{t('ai.general')}</span>
+          <span style={{ fontSize: 12, opacity: 0.8 }}>{t('ai.generalSub')}</span>
         </button>
       </div>
 
       {/* 结果 */}
       {(loading || text) && (
         <div className="card" style={{ marginTop: 16 }}>
-          <p className="card-label">{mode === 'library' ? '从你的常用推荐' : '通用建议'}</p>
+          <p className="card-label">{mode === 'library' ? t('ai.headerLibrary') : t('ai.headerGeneral')}</p>
           {loading ? (
-            <div className="empty">思考中…</div>
+            <div className="empty">{t('ai.thinking')}</div>
           ) : (
             <div style={{ whiteSpace: 'pre-wrap', fontSize: 14.5, lineHeight: 1.75, color: 'var(--text-dim)' }}>
               {text}
@@ -147,7 +147,7 @@ export default function AISuggest() {
           )}
           {!loading && text && mode && (
             <button className="btn btn-block" style={{ marginTop: 16 }} onClick={() => run(mode)}>
-              重新生成
+              {t('ai.regenerate')}
             </button>
           )}
         </div>
@@ -155,7 +155,7 @@ export default function AISuggest() {
 
       {!mode && (
         <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 10 }}>
-          选一种方式，AI 会结合你今天已吃的来建议
+          {t('ai.pickHint')}
         </p>
       )}
     </div>

@@ -10,7 +10,7 @@ export default async function handler(req: any, res: any) {
   }
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-    const result = await recognizeFood(body.image, body.mediaType)
+    const result = await recognizeFood(body.image, body.mediaType, body.lang)
     res.status(200).json(result)
   } catch (e) {
     console.error('recognize error', e)

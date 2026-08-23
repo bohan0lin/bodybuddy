@@ -3,27 +3,27 @@ import { useNavigate } from 'react-router-dom'
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { useStore } from '../data/store'
 import { formatDateShort, sumMacros, todayStr } from '../lib/nutrition'
+import { useT } from '../lib/i18n'
 import ProgressRing from '../components/ProgressRing'
 import MacroBar from '../components/MacroBar'
 
 export default function Today() {
   const { meals, profile, latestWeight, prevWeight, weightLogs } = useStore()
   const navigate = useNavigate()
+  const { t, lang } = useT()
   const today = todayStr()
 
-  const todayMeals = useMemo(
-    () => meals.filter((m) => m.date === today),
-    [meals, today],
-  )
+  const todayMeals = useMemo(() => meals.filter((m) => m.date === today), [meals, today])
   const totals = useMemo(() => sumMacros(todayMeals), [todayMeals])
 
-  // 近期体重（最多 7 次）做卡片内迷你趋势
+  const weightDelta =
+    latestWeight && prevWeight ? +(latestWeight.weight - prevWeight.weight).toFixed(1) : null
+
   const trend = useMemo(() => {
     const sorted = [...weightLogs].sort((a, b) => a.date.localeCompare(b.date))
     return sorted.slice(-7).map((w) => ({ date: formatDateShort(w.date), w: w.weight }))
   }, [weightLogs])
 
-  // 迷你趋势的 y 轴用「整 5」范围与刻度（如 60 / 65 / 70），比身体页更宽松
   const yTicks = useMemo(() => {
     if (trend.length < 2) return { domain: [0, 1] as [number, number], ticks: [] as number[] }
     const ys = trend.map((t) => t.w)
@@ -34,12 +34,12 @@ export default function Today() {
     return { domain: [min, max] as [number, number], ticks }
   }, [trend])
 
-  const weightDelta =
-    latestWeight && prevWeight ? +(latestWeight.weight - prevWeight.weight).toFixed(1) : null
-
-  const dateLabel = new Date()
-    .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
-    .toUpperCase()
+  const dateLabel =
+    lang === 'zh'
+      ? new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })
+      : new Date()
+          .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+          .toUpperCase()
 
   return (
     <div className="page">
@@ -52,8 +52,8 @@ export default function Today() {
         style={{ width: '100%', textAlign: 'left', display: 'block', cursor: 'pointer' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <span className="card-label" style={{ margin: 0 }}>最新体重</span>
-          <span className="dim" style={{ fontSize: 13 }}>身体数据 ›</span>
+          <span className="card-label" style={{ margin: 0 }}>{t('today.latestWeight')}</span>
+          <span className="dim" style={{ fontSize: 13 }}>{t('today.bodyData')} ›</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 28 }}>
           <div>
@@ -68,14 +68,14 @@ export default function Today() {
                 )}
               </div>
             ) : (
-              <span className="muted">还没有记录</span>
+              <span className="muted">{t('common.noRecords')}</span>
             )}
           </div>
           {latestWeight?.bodyFat != null && (
             <div style={{ borderLeft: '1px solid var(--line)', paddingLeft: 24 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
                 <span className="stat-lg num">{latestWeight.bodyFat}</span>
-                <span className="stat-unit">% 体脂</span>
+                <span className="stat-unit">{t('today.pctFat')}</span>
               </div>
             </div>
           )}
@@ -125,15 +125,15 @@ export default function Today() {
         style={{ width: '100%', textAlign: 'left', display: 'block', cursor: 'pointer' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <span className="card-label" style={{ margin: 0 }}>今日摄入</span>
-          <span className="dim" style={{ fontSize: 13 }}>记一餐 ›</span>
+          <span className="card-label" style={{ margin: 0 }}>{t('today.intake')}</span>
+          <span className="dim" style={{ fontSize: 13 }}>{t('today.logMeal')} ›</span>
         </div>
         <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-          <ProgressRing value={totals.calories} target={profile.targetCalories} caption="千卡" />
+          <ProgressRing value={totals.calories} target={profile.targetCalories} caption={t('today.kcal')} />
           <div style={{ flex: 1 }}>
-            <MacroBar label="蛋白" value={totals.protein} target={profile.targetProtein} color="var(--protein)" />
-            <MacroBar label="碳水" value={totals.carbs} target={profile.targetCarbs} color="var(--carbs)" />
-            <MacroBar label="脂肪" value={totals.fat} target={profile.targetFat} color="var(--fat)" />
+            <MacroBar label={t('macro.protein')} value={totals.protein} target={profile.targetProtein} color="var(--protein)" />
+            <MacroBar label={t('macro.carbs')} value={totals.carbs} target={profile.targetCarbs} color="var(--carbs)" />
+            <MacroBar label={t('macro.fat')} value={totals.fat} target={profile.targetFat} color="var(--fat)" />
           </div>
         </div>
       </button>
@@ -144,7 +144,7 @@ export default function Today() {
         onClick={() => navigate('/ai')}
         style={{ padding: '18px', fontSize: 16 }}
       >
-        ✦ AI 建议 · 还能吃什么
+        ✦ {t('today.aiButton')}
       </button>
     </div>
   )

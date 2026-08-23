@@ -11,10 +11,12 @@ import {
 } from 'recharts'
 import { useStore } from '../data/store'
 import { formatDateShort, todayStr } from '../lib/nutrition'
+import { useT } from '../lib/i18n'
 
 export default function Body() {
   const { weightLogs, upsertWeight, latestWeight } = useStore()
   const navigate = useNavigate()
+  const { t } = useT()
   const [date, setDate] = useState(todayStr())
   const [weight, setWeight] = useState('')
   const [bodyFat, setBodyFat] = useState('')
@@ -42,14 +44,14 @@ export default function Body() {
         onClick={() => navigate('/')}
         style={{ padding: 0, marginBottom: 22, fontSize: 14, color: 'var(--text-dim)' }}
       >
-        ‹ 今日
+        {t('common.backToday')}
       </button>
 
       {/* 概览 */}
       {latestWeight && (
         <div className="card" style={{ display: 'flex', gap: 28 }}>
           <div>
-            <p className="card-label" style={{ marginBottom: 10 }}>当前体重</p>
+            <p className="card-label" style={{ marginBottom: 10 }}>{t('body.currentWeight')}</p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
               <span className="stat-lg num">{latestWeight.weight}</span>
               <span className="stat-unit">kg</span>
@@ -57,7 +59,7 @@ export default function Body() {
           </div>
           {latestWeight.bodyFat != null && (
             <div style={{ borderLeft: '1px solid var(--line)', paddingLeft: 28 }}>
-              <p className="card-label" style={{ marginBottom: 10 }}>体脂率</p>
+              <p className="card-label" style={{ marginBottom: 10 }}>{t('body.bodyFatRate')}</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <span className="stat-lg num">{latestWeight.bodyFat}</span>
                 <span className="stat-unit">%</span>
@@ -74,11 +76,11 @@ export default function Body() {
         style={{ width: '100%', textAlign: 'left', display: 'block', cursor: 'pointer' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <span className="card-label" style={{ margin: 0 }}>体重趋势</span>
-          <span className="dim" style={{ fontSize: 13 }}>历史记录 ›</span>
+          <span className="card-label" style={{ margin: 0 }}>{t('body.weightTrend')}</span>
+          <span className="dim" style={{ fontSize: 13 }}>{t('body.history')} ›</span>
         </div>
         {chartData.length < 2 ? (
-          <div className="empty">再记录几次即可看到趋势曲线</div>
+          <div className="empty">{t('body.trendEmpty')}</div>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData} margin={{ top: 10, right: 14, left: 0, bottom: 0 }}>
@@ -113,7 +115,7 @@ export default function Body() {
               <Line
                 type="monotone"
                 dataKey="weight"
-                name="体重"
+                name={t('body.weightTrend')}
                 stroke="var(--accent)"
                 strokeWidth={2}
                 dot={{ r: 2.5, fill: 'var(--accent)', strokeWidth: 0 }}
@@ -126,23 +128,23 @@ export default function Body() {
 
       {/* 记录表单 */}
       <div className="card">
-        <p className="card-label">记录一次</p>
+        <p className="card-label">{t('body.logOnce')}</p>
         <div className="field">
-          <label>日期</label>
+          <label>{t('body.date')}</label>
           <input type="date" value={date} max={todayStr()} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div className="row">
           <div className="field">
-            <label>体重 (kg)</label>
+            <label>{t('body.weightKg')}</label>
             <input type="number" inputMode="decimal" step="0.1" placeholder="70.0" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </div>
           <div className="field">
-            <label>体脂 (%) 可选</label>
+            <label>{t('body.bodyFatOpt')}</label>
             <input type="number" inputMode="decimal" step="0.1" placeholder="18.0" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} />
           </div>
         </div>
         <button className="btn btn-primary btn-block" onClick={handleSave} disabled={!weight}>
-          保存
+          {t('common.save')}
         </button>
       </div>
     </div>
