@@ -86,7 +86,8 @@ a {
 
 .page {
   flex: 1;
-  padding: 28px 20px calc(104px + env(safe-area-inset-bottom));
+  /* 顶部加 iOS 安全区，避免 PWA 全屏时内容被状态栏/刘海遮住 */
+  padding: calc(28px + env(safe-area-inset-top)) 20px calc(104px + env(safe-area-inset-bottom));
 }
 
 /* 小标题 eyebrow：全大写 + 字距 */
