@@ -11,7 +11,7 @@
 
 ## English
 
-BodyBuddy is a mobile-first **PWA** (installable to your home screen) for tracking daily nutrition and body metrics, with an AI coach that suggests what to eat based on what you've already had today. Designed for personal use and a small circle of friends, with a dark, understated "Equinox × Apple" aesthetic.
+BodyBuddy is a mobile-first **PWA** for tracking daily nutrition and body metrics, with an AI coach that suggests what to eat based on what you've already had today.
 
 ### ✨ Features
 
@@ -81,7 +81,7 @@ supabase/       schema.sql (tables + RLS + triggers)
 
 ## 中文
 
-BodyBuddy 是一个移动优先的 **PWA**（可添加到手机主屏）健身饮食追踪应用，带一个会根据你今天已经吃的来建议"接下来吃什么"的 AI 教练。为自己和小圈子朋友打造，采用低调暗色的「Equinox × Apple」视觉风格。
+BodyBuddy 是一个移动优先的 **PWA** 健身饮食追踪应用，带一个会根据你今天已经吃的来建议"接下来吃什么"的 AI 教练。
 
 ### ✨ 功能
 
