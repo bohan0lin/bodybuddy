@@ -283,9 +283,9 @@ export default function LogMeal() {
               style={{
                 flex: 1,
                 justifyContent: 'center',
-                background: type === t ? 'var(--text)' : 'var(--surface)',
-                color: type === t ? '#111' : 'var(--text)',
-                borderColor: type === t ? 'var(--text)' : 'var(--line)',
+                background: type === t ? 'var(--surface-2)' : 'var(--surface)',
+                color: type === t ? 'var(--accent)' : 'var(--text)',
+                borderColor: type === t ? 'var(--accent)' : 'var(--line)',
                 fontWeight: type === t ? 600 : 400,
               }}
             >
@@ -327,9 +327,9 @@ export default function LogMeal() {
                   flex: 1,
                   justifyContent: 'center',
                   padding: '10px 4px',
-                  background: unit === u ? 'var(--text)' : 'var(--surface)',
-                  color: unit === u ? '#111' : 'var(--text)',
-                  borderColor: unit === u ? 'var(--text)' : 'var(--line)',
+                  background: unit === u ? 'var(--surface-2)' : 'var(--surface)',
+                  color: unit === u ? 'var(--accent)' : 'var(--text)',
+                  borderColor: unit === u ? 'var(--accent)' : 'var(--line)',
                   fontWeight: unit === u ? 600 : 400,
                 }}
               >

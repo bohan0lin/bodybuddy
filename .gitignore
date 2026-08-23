@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 误建的嵌套克隆（多余，可手动删除）
+/bodybuddy/

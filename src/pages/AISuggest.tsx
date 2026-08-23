@@ -103,19 +103,31 @@ export default function AISuggest() {
       {/* 两种方式 */}
       <div className="row">
         <button
-          className={'btn' + (mode === 'library' ? ' btn-accent' : '')}
+          className="btn"
           onClick={() => run('library')}
           disabled={loading}
-          style={{ flexDirection: 'column', gap: 4, padding: '20px 8px' }}
+          style={{
+            flexDirection: 'column',
+            gap: 4,
+            padding: '20px 8px',
+            color: mode === 'library' ? 'var(--accent)' : undefined,
+            borderColor: mode === 'library' ? 'var(--accent)' : undefined,
+          }}
         >
           <span style={{ fontWeight: 600 }}>从我的常用</span>
           <span style={{ fontSize: 12, opacity: 0.8 }}>食物 / 套餐里挑</span>
         </button>
         <button
-          className={'btn' + (mode === 'general' ? ' btn-accent' : '')}
+          className="btn"
           onClick={() => run('general')}
           disabled={loading}
-          style={{ flexDirection: 'column', gap: 4, padding: '20px 8px' }}
+          style={{
+            flexDirection: 'column',
+            gap: 4,
+            padding: '20px 8px',
+            color: mode === 'general' ? 'var(--accent)' : undefined,
+            borderColor: mode === 'general' ? 'var(--accent)' : undefined,
+          }}
         >
           <span style={{ fontWeight: 600 }}>通用建议</span>
           <span style={{ fontSize: 12, opacity: 0.8 }}>不限于常用</span>

@@ -228,7 +228,8 @@ a {
   border: none;
   border-bottom: 1px solid var(--line-strong);
   background: transparent;
-  color: var(--text);
+  color: var(--accent); /* 用户输入的文字用黑金色 */
+  font-weight: 500;
   outline: none;
   border-radius: 0;
   transition: border-color 0.2s ease;
@@ -294,7 +295,7 @@ a {
 }
 
 .nav-item.active {
-  color: var(--text);
+  color: var(--accent);
 }
 
 .nav-item .nav-icon {
