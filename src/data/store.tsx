@@ -31,6 +31,7 @@ const toMeal = (r: any): Meal => ({
   date: r.date,
   type: r.type,
   name: r.name,
+  brand: r.brand ?? undefined,
   amount: r.amount ?? undefined,
   unit: r.unit ?? undefined,
   protein: Number(r.protein),
@@ -44,6 +45,7 @@ const toSaved = (r: any): SavedItem => ({
   id: r.id,
   kind: r.kind,
   name: r.name,
+  brand: r.brand ?? undefined,
   unit: r.unit,
   baseAmount: Number(r.base_amount),
   protein: Number(r.protein),
@@ -73,6 +75,7 @@ interface StoreValue extends AppData {
   upsertWeight: (w: Omit<WeightLog, 'id'>) => void
   updateProfile: (p: Partial<Profile>) => void
   addSavedItem: (s: Omit<SavedItem, 'id'>) => void
+  updateSavedItem: (id: string, patch: Partial<Omit<SavedItem, 'id'>>) => void
   deleteSavedItem: (id: string) => void
   latestWeight: WeightLog | undefined
   prevWeight: WeightLog | undefined
@@ -140,6 +143,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
             date: meal.date,
             type: meal.type,
             name: meal.name,
+            brand: meal.brand ?? null,
             amount: meal.amount ?? null,
             unit: meal.unit ?? null,
             protein: meal.protein,
@@ -188,7 +192,10 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
 
       addSavedItem: (s) => {
         setData((d) => {
-          const idx = d.savedItems.findIndex((x) => x.kind === s.kind && x.name === s.name)
+          // 同类同名同品牌视为同一项 → 更新；否则新增
+          const idx = d.savedItems.findIndex(
+            (x) => x.kind === s.kind && x.name === s.name && (x.brand ?? '') === (s.brand ?? ''),
+          )
           if (idx >= 0) {
             const existing = d.savedItems[idx]
             const next = [...d.savedItems]
@@ -196,6 +203,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
             supabase
               .from('saved_items')
               .update({
+                brand: s.brand ?? null,
                 unit: s.unit,
                 base_amount: s.baseAmount,
                 protein: s.protein,
@@ -216,6 +224,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
               user_id: userId,
               kind: item.kind,
               name: item.name,
+              brand: item.brand ?? null,
               unit: item.unit,
               base_amount: item.baseAmount,
               protein: item.protein,
@@ -227,6 +236,25 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
             .then(({ error }) => error && console.error('addSaved', error))
           return { ...d, savedItems: [item, ...d.savedItems] }
         })
+      },
+
+      updateSavedItem: (id, patch) => {
+        setData((d) => ({
+          ...d,
+          savedItems: d.savedItems.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+        }))
+        const row: Record<string, unknown> = {}
+        if (patch.kind !== undefined) row.kind = patch.kind
+        if (patch.name !== undefined) row.name = patch.name
+        if (patch.brand !== undefined) row.brand = patch.brand || null
+        if (patch.unit !== undefined) row.unit = patch.unit
+        if (patch.baseAmount !== undefined) row.base_amount = patch.baseAmount
+        if (patch.protein !== undefined) row.protein = patch.protein
+        if (patch.carbs !== undefined) row.carbs = patch.carbs
+        if (patch.fat !== undefined) row.fat = patch.fat
+        if (patch.calories !== undefined) row.calories = patch.calories
+        if (patch.note !== undefined) row.note = patch.note || null
+        supabase.from('saved_items').update(row).eq('id', id).then(({ error }) => error && console.error('updateSavedItem', error))
       },
 
       deleteSavedItem: (id) => {

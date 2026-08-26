@@ -4,6 +4,7 @@ import { Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { useStore } from '../data/store'
 import { formatDateShort, sumMacros, todayStr } from '../lib/nutrition'
 import { useT } from '../lib/i18n'
+import { usePrefs } from '../lib/prefs'
 import ProgressRing from '../components/ProgressRing'
 import MacroBar from '../components/MacroBar'
 
@@ -11,6 +12,8 @@ export default function Today() {
   const { meals, profile, latestWeight, prevWeight, weightLogs } = useStore()
   const navigate = useNavigate()
   const { t, lang } = useT()
+  const { energyUnit, toEnergy } = usePrefs()
+  const energyLabel = t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')
   const today = todayStr()
 
   const todayMeals = useMemo(() => meals.filter((m) => m.date === today), [meals, today])
@@ -129,7 +132,7 @@ export default function Today() {
           <span className="dim" style={{ fontSize: 13 }}>{t('today.logMeal')} ›</span>
         </div>
         <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-          <ProgressRing value={totals.calories} target={profile.targetCalories} caption={t('today.kcal')} />
+          <ProgressRing value={toEnergy(totals.calories)} target={toEnergy(profile.targetCalories)} caption={energyLabel} />
           <div style={{ flex: 1 }}>
             <MacroBar label={t('macro.protein')} value={totals.protein} target={profile.targetProtein} color="var(--protein)" />
             <MacroBar label={t('macro.carbs')} value={totals.carbs} target={profile.targetCarbs} color="var(--carbs)" />

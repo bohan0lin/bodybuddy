@@ -39,6 +39,7 @@ export interface Meal {
   date: string // YYYY-MM-DD
   type: MealType
   name: string
+  brand?: string // 品牌，如某某牌
   amount?: number // 分量，如 150
   unit?: string // 单位，如 g / 份
   protein: number // g
@@ -63,6 +64,7 @@ export interface SavedItem {
   id: string
   kind: SavedKind
   name: string
+  brand?: string // 品牌，如某某牌鸡胸肉
   unit: string // 计量单位：g / 份 / ml / 个 …
   baseAmount: number // 以下营养值对应的分量，如 100（表示每 100g）
   protein: number

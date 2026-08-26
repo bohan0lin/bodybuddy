@@ -4,6 +4,7 @@ import { useStore } from '../data/store'
 import { sumMacros, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { useT } from '../lib/i18n'
+import { usePrefs } from '../lib/prefs'
 
 type Mode = 'library' | 'general'
 
@@ -11,6 +12,7 @@ export default function AISuggest() {
   const { meals, profile, savedItems } = useStore()
   const navigate = useNavigate()
   const { t, lang } = useT()
+  const { energyUnit, toEnergy } = usePrefs()
   const today = todayStr()
 
   const todayMeals = useMemo(() => meals.filter((m) => m.date === today), [meals, today])
@@ -23,7 +25,7 @@ export default function AISuggest() {
     fat: Math.max(0, Math.round(profile.targetFat - totals.fat)),
   }
   const remItems = [
-    { l: t('settings.calKcal'), v: rem.calories, u: '' },
+    { l: t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal'), v: toEnergy(rem.calories), u: '' },
     { l: t('macro.protein'), v: rem.protein, u: 'g' },
     { l: t('macro.carbs'), v: rem.carbs, u: 'g' },
     { l: t('macro.fat'), v: rem.fat, u: 'g' },

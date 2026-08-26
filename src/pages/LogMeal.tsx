@@ -5,18 +5,10 @@ import { estimateCalories, round1, scale, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
+import { usePrefs } from '../lib/prefs'
 import { MEAL_TYPES, type MealType, type SavedItem, type SavedKind } from '../types'
 
-// 拍照识别返回的单项
-type RecogItem = {
-  name: string
-  amount: number
-  unit: string
-  protein: number
-  carbs: number
-  fat: number
-  calories: number
-}
+type RecogItem = { name: string; amount: number; unit: string; protein: number; carbs: number; fat: number; calories: number }
 
 function guessMealType(): MealType {
   const h = new Date().getHours()
@@ -26,29 +18,33 @@ function guessMealType(): MealType {
   return 'snack'
 }
 
-// 单位存储用规范值，显示按语言本地化
 const UNITS = ['g', '份', 'ml', '个', '勺']
 
 export default function LogMeal() {
-  const { addMeal, meals, deleteMeal, savedItems, addSavedItem, deleteSavedItem } = useStore()
+  const { addMeal, meals, deleteMeal, savedItems, addSavedItem, updateSavedItem, deleteSavedItem } = useStore()
   const navigate = useNavigate()
   const { t, lang } = useT()
+  const { energyUnit, toEnergy, fromEnergy } = usePrefs()
+  const energyLabel = t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')
   const today = todayStr()
 
   const [type, setType] = useState<MealType>(guessMealType())
   const [name, setName] = useState('')
+  const [brand, setBrand] = useState('')
   const [unit, setUnit] = useState('g')
   const [amount, setAmount] = useState('')
   const [protein, setProtein] = useState('')
   const [carbs, setCarbs] = useState('')
   const [fat, setFat] = useState('')
-  const [calories, setCalories] = useState('')
+  const [calories, setCalories] = useState('') // 内部始终存千卡
 
   const base = useRef<{ amount: number; p: number; c: number; f: number; cal: number } | null>(null)
 
   const [pickTab, setPickTab] = useState<SavedKind>('food')
   const [manageMode, setManageMode] = useState(false)
   const [saveToLib, setSaveToLib] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [recognizing, setRecognizing] = useState(false)
@@ -60,27 +56,44 @@ export default function LogMeal() {
 
   const autoCal = estimateCalories(+protein || 0, +carbs || 0, +fat || 0)
 
-  const picks = useMemo(() => savedItems.filter((s) => s.kind === pickTab), [savedItems, pickTab])
+  const picks = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return savedItems
+      .filter((s) => s.kind === pickTab)
+      .filter((s) => !q || s.name.toLowerCase().includes(q) || (s.brand ?? '').toLowerCase().includes(q))
+  }, [savedItems, pickTab, query])
 
   const todayMeals = useMemo(
     () => meals.filter((m) => m.date === today).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     [meals, today],
   )
-  const savedMealNames = useMemo(
-    () => new Set(savedItems.filter((s) => s.kind === 'meal').map((s) => s.name)),
+  const savedMealKeys = useMemo(
+    () => new Set(savedItems.filter((s) => s.kind === 'meal').map((s) => `${s.name}|${s.brand ?? ''}`)),
     [savedItems],
   )
 
-  // 单位本地化显示（存储值保持规范）
   const unitLabel = (u: string): string => {
     if (u === '份') return t('unit.serving')
     if (u === '个') return t('unit.piece')
     if (u === '勺') return t('unit.spoon')
-    return u // g / ml 通用
+    return u
   }
 
-  function fillForm(v: RecogItem) {
+  function resetForm() {
+    setName('')
+    setBrand('')
+    setUnit('g')
+    setAmount('')
+    setProtein('')
+    setCarbs('')
+    setFat('')
+    setCalories('')
+    base.current = null
+  }
+
+  function fillForm(v: RecogItem & { brand?: string }) {
     setName(v.name)
+    setBrand(v.brand ?? '')
     setUnit(v.unit)
     setAmount(String(v.amount))
     setProtein(String(v.protein))
@@ -91,15 +104,18 @@ export default function LogMeal() {
   }
 
   function fillFrom(item: SavedItem) {
-    fillForm({
-      name: item.name,
-      unit: item.unit,
-      amount: item.baseAmount,
-      protein: item.protein,
-      carbs: item.carbs,
-      fat: item.fat,
-      calories: item.calories,
-    })
+    fillForm({ name: item.name, brand: item.brand, unit: item.unit, amount: item.baseAmount, protein: item.protein, carbs: item.carbs, fat: item.fat, calories: item.calories })
+  }
+
+  function startEdit(item: SavedItem) {
+    setEditingId(item.id)
+    fillFrom(item)
+    setSaveToLib(false)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    resetForm()
   }
 
   function changeAmount(val: string) {
@@ -114,9 +130,40 @@ export default function LogMeal() {
     }
   }
 
+  // 蛋白/碳水/脂肪：直接编辑，脱离换算
   function editMacro(setter: (v: string) => void, val: string) {
     base.current = null
     setter(val)
+  }
+  // 热量：显示/输入按单位换算，内部存千卡
+  function editCalories(shown: string) {
+    base.current = null
+    setCalories(shown === '' ? '' : String(Math.round(fromEnergy(Number(shown) || 0))))
+  }
+
+  async function lookupName() {
+    const q = name.trim()
+    if (!q) return
+    setLooking(true)
+    setLookupMsg(null)
+    try {
+      type Match = { matched: boolean; unit: string; baseAmount: number; protein: number; carbs: number; fat: number; calories: number }
+      const { match } = await postJson<{ match: Match | null }>('/api/lookup', { name: q })
+      if (match && match.matched) {
+        setUnit(match.unit)
+        setAmount(String(match.baseAmount))
+        setProtein(String(match.protein))
+        setCarbs(String(match.carbs))
+        setFat(String(match.fat))
+        setCalories(String(match.calories))
+        base.current = { amount: match.baseAmount, p: match.protein, c: match.carbs, f: match.fat, cal: match.calories }
+        setLookupMsg(t('log.lookupHit'))
+      } else setLookupMsg(t('log.lookupMiss'))
+    } catch {
+      setLookupMsg(t('log.lookupMiss'))
+    } finally {
+      setLooking(false)
+    }
   }
 
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -141,51 +188,33 @@ export default function LogMeal() {
     }
   }
 
-  // 手动输入食物名 → 查营养库自动填营养值（保留用户输入的名字）
-  async function lookupName() {
-    const q = name.trim()
-    if (!q) return
-    setLooking(true)
-    setLookupMsg(null)
-    try {
-      type Match = { matched: boolean; unit: string; baseAmount: number; protein: number; carbs: number; fat: number; calories: number }
-      const { match } = await postJson<{ match: Match | null }>('/api/lookup', { name: q })
-      if (match && match.matched) {
-        setUnit(match.unit)
-        setAmount(String(match.baseAmount))
-        setProtein(String(match.protein))
-        setCarbs(String(match.carbs))
-        setFat(String(match.fat))
-        setCalories(String(match.calories))
-        base.current = { amount: match.baseAmount, p: match.protein, c: match.carbs, f: match.fat, cal: match.calories }
-        setLookupMsg(t('log.lookupHit'))
-      } else {
-        setLookupMsg(t('log.lookupMiss'))
-      }
-    } catch {
-      setLookupMsg(t('log.lookupMiss'))
-    } finally {
-      setLooking(false)
-    }
-  }
-
-  function handleSave() {
-    if (!name.trim()) return
+  function currentFields() {
     const p = +protein || 0
     const c = +carbs || 0
     const f = +fat || 0
     const cal = +calories || autoCal
     const amt = +amount || undefined
-    addMeal({ date: todayStr(), type, name: name.trim(), amount: amt, unit, protein: p, carbs: c, fat: f, calories: cal })
+    return { p, c, f, cal, amt }
+  }
+
+  function handleSave() {
+    if (!name.trim()) return
+    const { p, c, f, cal, amt } = currentFields()
+    addMeal({ date: todayStr(), type, name: name.trim(), brand: brand.trim() || undefined, amount: amt, unit, protein: p, carbs: c, fat: f, calories: cal })
     if (saveToLib) {
-      addSavedItem({ kind: pickTab, name: name.trim(), unit, baseAmount: amt ?? 1, protein: p, carbs: c, fat: f, calories: cal })
+      addSavedItem({ kind: pickTab, name: name.trim(), brand: brand.trim() || undefined, unit, baseAmount: amt ?? 1, protein: p, carbs: c, fat: f, calories: cal })
     }
     navigate('/')
   }
 
-  const quickAmounts = base.current
-    ? [0.5, 1, 1.5, 2].map((k) => round1(base.current!.amount * k))
-    : []
+  function saveEdit() {
+    if (!editingId || !name.trim()) return
+    const { p, c, f, cal, amt } = currentFields()
+    updateSavedItem(editingId, { name: name.trim(), brand: brand.trim() || undefined, unit, baseAmount: amt ?? 1, protein: p, carbs: c, fat: f, calories: cal })
+    cancelEdit()
+  }
+
+  const quickAmounts = base.current ? [0.5, 1, 1.5, 2].map((k) => round1(base.current!.amount * k)) : []
 
   return (
     <div className="page">
@@ -221,7 +250,7 @@ export default function LogMeal() {
                       <span className="muted" style={{ fontWeight: 400 }}> · {it.amount}{unitLabel(it.unit)}</span>
                     </div>
                     <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                      {it.calories} {t('today.kcal')} · {t('macro.protein')} {it.protein} {t('macro.carbs')} {it.carbs} {t('macro.fat')} {it.fat}
+                      {toEnergy(it.calories)} {energyLabel} · {t('macro.protein')} {it.protein} {t('macro.carbs')} {it.carbs} {t('macro.fat')} {it.fat}
                     </div>
                   </button>
                   <span className="dim" style={{ fontSize: 20 }}>＋</span>
@@ -233,48 +262,55 @@ export default function LogMeal() {
         </div>
       )}
 
-      {/* 常用快捷选择 */}
+      {/* 常用：搜索 + 快捷选择 + 管理/编辑 */}
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className={'chip' + (pickTab === 'food' ? ' active' : '')} onClick={() => setPickTab('food')}>
-              {t('log.freqFoods')}
-            </button>
-            <button className={'chip' + (pickTab === 'meal' ? ' active' : '')} onClick={() => setPickTab('meal')}>
-              {t('log.myMeals')}
-            </button>
+            <button className={'chip' + (pickTab === 'food' ? ' active' : '')} onClick={() => setPickTab('food')}>{t('log.freqFoods')}</button>
+            <button className={'chip' + (pickTab === 'meal' ? ' active' : '')} onClick={() => setPickTab('meal')}>{t('log.myMeals')}</button>
           </div>
-          {picks.length > 0 && (
+          {savedItems.some((s) => s.kind === pickTab) && (
             <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setManageMode((v) => !v)}>
               {manageMode ? t('common.done') : t('common.manage')}
             </button>
           )}
         </div>
 
+        {/* 搜索框 */}
+        {savedItems.some((s) => s.kind === pickTab) && (
+          <input
+            placeholder={t('log.searchPh')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ width: '100%', padding: '10px 14px', marginBottom: 12, background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--text)', outline: 'none' }}
+          />
+        )}
+
         {picks.length === 0 ? (
           <div className="empty">
-            {pickTab === 'food' ? t('log.noFreqFood') : t('log.noFreqMeal')}
-            <br />
-            {t('log.saveHint')}
+            {query.trim()
+              ? t('log.noMatch')
+              : <>{pickTab === 'food' ? t('log.noFreqFood') : t('log.noFreqMeal')}<br />{t('log.saveHint')}</>}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {picks.map((item) => (
               <div key={item.id} className="list-row" style={{ padding: '14px 0' }}>
-                <button onClick={() => !manageMode && fillFrom(item)} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+                <button onClick={() => (manageMode ? startEdit(item) : fillFrom(item))} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
                   <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.name}
+                    {item.brand && <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {item.brand}</span>}
                     <span className="muted" style={{ fontWeight: 400 }}> · {item.baseAmount}{unitLabel(item.unit)}</span>
                   </div>
                   <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                    {item.calories} {t('today.kcal')} · {t('macro.protein')} {item.protein} {t('macro.carbs')} {item.carbs} {t('macro.fat')} {item.fat}
-                    {item.note ? ` · ${item.note}` : ''}
+                    {toEnergy(item.calories)} {energyLabel} · {t('macro.protein')} {item.protein} {t('macro.carbs')} {item.carbs} {t('macro.fat')} {item.fat}
                   </div>
                 </button>
                 {manageMode ? (
-                  <button className="btn-ghost" style={{ color: 'var(--protein)', fontSize: 20, padding: 6 }} onClick={() => deleteSavedItem(item.id)} aria-label={t('common.done')}>
-                    −
-                  </button>
+                  <>
+                    <span className="dim" style={{ fontSize: 13, marginRight: 6 }}>{t('log.edit')} ›</span>
+                    <button className="btn-ghost" style={{ color: 'var(--protein)', fontSize: 20, padding: 6 }} onClick={() => deleteSavedItem(item.id)} aria-label="delete">−</button>
+                  </>
                 ) : (
                   <span className="dim" style={{ fontSize: 20 }}>＋</span>
                 )}
@@ -284,43 +320,39 @@ export default function LogMeal() {
         )}
       </div>
 
-      {/* 餐次 */}
-      <div className="card">
-        <p className="card-label">{t('log.mealType')}</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {MEAL_TYPES.map((mt) => (
-            <button
-              key={mt}
-              onClick={() => setType(mt)}
-              className="chip"
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                background: type === mt ? 'var(--surface-2)' : 'var(--surface)',
-                color: type === mt ? 'var(--accent)' : 'var(--text)',
-                borderColor: type === mt ? 'var(--accent)' : 'var(--line)',
-                fontWeight: type === mt ? 600 : 400,
-              }}
-            >
-              {t('meal.' + mt)}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* 编辑常用项提示条 */}
+      {editingId && (
+        <p style={{ fontSize: 13, color: 'var(--accent)', margin: '0 0 12px', textAlign: 'center' }}>
+          {t('log.editing')}
+        </p>
+      )}
 
-      {/* 手动填写 */}
+      {/* 餐次（编辑常用时隐藏） */}
+      {!editingId && (
+        <div className="card">
+          <p className="card-label">{t('log.mealType')}</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {MEAL_TYPES.map((mt) => (
+              <button key={mt} onClick={() => setType(mt)} className="chip" style={{ flex: 1, justifyContent: 'center', background: type === mt ? 'var(--surface-2)' : 'var(--surface)', color: type === mt ? 'var(--accent)' : 'var(--text)', borderColor: type === mt ? 'var(--accent)' : 'var(--line)', fontWeight: type === mt ? 600 : 400 }}>
+                {t('meal.' + mt)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 填写表单 */}
       <div className="card">
-        <div className="field" style={{ marginBottom: 10 }}>
+        <div className="field" style={{ marginBottom: 14 }}>
           <label>{t('log.foodName')}</label>
           <input placeholder={t('log.foodNamePh')} value={name} onChange={(e) => { setName(e.target.value); setLookupMsg(null) }} />
         </div>
+        <div className="field" style={{ marginBottom: 10 }}>
+          <label>{t('log.brand')}</label>
+          <input placeholder={t('log.brandPh')} value={brand} onChange={(e) => setBrand(e.target.value)} />
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          <button
-            className="chip"
-            onClick={lookupName}
-            disabled={looking || !name.trim()}
-            style={{ padding: '7px 14px', fontSize: 13, opacity: !name.trim() ? 0.5 : 1 }}
-          >
+          <button className="chip" onClick={lookupName} disabled={looking || !name.trim()} style={{ padding: '7px 14px', fontSize: 13, opacity: !name.trim() ? 0.5 : 1 }}>
             ⌕ {looking ? t('log.looking') : t('log.lookup')}
           </button>
           {lookupMsg && <span className="muted" style={{ fontSize: 12, color: 'var(--accent)' }}>{lookupMsg}</span>}
@@ -335,20 +367,7 @@ export default function LogMeal() {
           <label>{t('log.unit')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {UNITS.map((u) => (
-              <button
-                key={u}
-                onClick={() => setUnit(u)}
-                className="chip"
-                style={{
-                  flex: 1,
-                  justifyContent: 'center',
-                  padding: '10px 4px',
-                  background: unit === u ? 'var(--surface-2)' : 'var(--surface)',
-                  color: unit === u ? 'var(--accent)' : 'var(--text)',
-                  borderColor: unit === u ? 'var(--accent)' : 'var(--line)',
-                  fontWeight: unit === u ? 600 : 400,
-                }}
-              >
+              <button key={u} onClick={() => setUnit(u)} className="chip" style={{ flex: 1, justifyContent: 'center', padding: '10px 4px', background: unit === u ? 'var(--surface-2)' : 'var(--surface)', color: unit === u ? 'var(--accent)' : 'var(--text)', borderColor: unit === u ? 'var(--accent)' : 'var(--line)', fontWeight: unit === u ? 600 : 400 }}>
                 {unitLabel(u)}
               </button>
             ))}
@@ -366,9 +385,7 @@ export default function LogMeal() {
         )}
 
         {base.current && (
-          <p className="muted" style={{ fontSize: 12, margin: '-6px 0 16px', color: 'var(--accent)' }}>
-            {t('log.scaleHint')}
-          </p>
+          <p className="muted" style={{ fontSize: 12, margin: '-6px 0 16px', color: 'var(--accent)' }}>{t('log.scaleHint')}</p>
         )}
 
         <div className="row">
@@ -387,74 +404,61 @@ export default function LogMeal() {
             <input type="number" inputMode="decimal" placeholder="0" value={fat} onChange={(e) => editMacro(setFat, e.target.value)} />
           </div>
           <div className="field">
-            <label>{t('log.kcalField')}</label>
-            <input type="number" inputMode="decimal" placeholder={autoCal ? t('log.autoCal', { n: autoCal }) : '0'} value={calories} onChange={(e) => editMacro(setCalories, e.target.value)} />
+            <label>{t('settings.energy')} ({energyLabel})</label>
+            <input type="number" inputMode="decimal" placeholder={autoCal ? String(toEnergy(autoCal)) : '0'} value={calories === '' ? '' : toEnergy(+calories)} onChange={(e) => editCalories(e.target.value)} />
           </div>
         </div>
 
-        <button
-          onClick={() => setSaveToLib((v) => !v)}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '4px 0', color: saveToLib ? 'var(--accent)' : 'var(--text-dim)' }}
-        >
-          <span
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: 6,
-              border: '1px solid ' + (saveToLib ? 'var(--accent)' : 'var(--line-strong)'),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 13,
-              background: saveToLib ? 'var(--accent)' : 'transparent',
-              color: '#1a1206',
-            }}
-          >
-            {saveToLib ? '✓' : ''}
-          </span>
-          <span style={{ fontSize: 14 }}>
-            {pickTab === 'food' ? t('log.saveToFreqFood') : t('log.saveToFreqMeal')}
-            <span className="muted" style={{ fontSize: 12 }}>{t('log.saveBasis')}</span>
-          </span>
-        </button>
+        {/* 保存到常用（编辑模式下隐藏） */}
+        {!editingId && (
+          <button onClick={() => setSaveToLib((v) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '4px 0', color: saveToLib ? 'var(--accent)' : 'var(--text-dim)' }}>
+            <span style={{ width: 20, height: 20, borderRadius: 6, border: '1px solid ' + (saveToLib ? 'var(--accent)' : 'var(--line-strong)'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: saveToLib ? 'var(--accent)' : 'transparent', color: '#1a1206' }}>
+              {saveToLib ? '✓' : ''}
+            </span>
+            <span style={{ fontSize: 14 }}>
+              {pickTab === 'food' ? t('log.saveToFreqFood') : t('log.saveToFreqMeal')}
+              <span className="muted" style={{ fontSize: 12 }}>{t('log.saveBasis')}</span>
+            </span>
+          </button>
+        )}
       </div>
 
-      <div className="row">
-        <button className="btn" onClick={() => navigate(-1)}>{t('common.cancel')}</button>
-        <button className="btn btn-primary" onClick={handleSave} disabled={!name.trim()}>
-          {t('log.saveRecord')}
-        </button>
-      </div>
+      {/* 动作区 */}
+      {editingId ? (
+        <div className="row">
+          <button className="btn" onClick={cancelEdit}>{t('common.cancel')}</button>
+          <button className="btn btn-primary" onClick={saveEdit} disabled={!name.trim()}>{t('log.updateSaved')}</button>
+        </div>
+      ) : (
+        <div className="row">
+          <button className="btn" onClick={() => navigate(-1)}>{t('common.cancel')}</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={!name.trim()}>{t('log.saveRecord')}</button>
+        </div>
+      )}
 
       {/* 今日已记录 */}
-      {todayMeals.length > 0 && (
+      {!editingId && todayMeals.length > 0 && (
         <div className="card" style={{ marginTop: 16 }}>
           <p className="card-label">{t('log.loggedToday')}</p>
           {todayMeals.map((m) => {
-            const saved = savedMealNames.has(m.name)
+            const saved = savedMealKeys.has(`${m.name}|${m.brand ?? ''}`)
             return (
               <div key={m.id} className="list-row">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {m.name}
+                    {m.brand && <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {m.brand}</span>}
                     {m.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {m.amount}{unitLabel(m.unit ?? '')}</span> : null}
                   </div>
                   <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                    {t('meal.' + m.type)} · {m.calories} {t('today.kcal')} · {t('macro.protein')} {m.protein} {t('macro.carbs')} {m.carbs} {t('macro.fat')} {m.fat}
+                    {t('meal.' + m.type)} · {toEnergy(m.calories)} {energyLabel} · {t('macro.protein')} {m.protein} {t('macro.carbs')} {m.carbs} {t('macro.fat')} {m.fat}
                   </div>
                 </div>
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: 18, padding: 6, color: saved ? 'var(--accent)' : 'var(--text-muted)' }}
-                  onClick={() =>
-                    addSavedItem({ kind: 'meal', name: m.name, unit: m.unit ?? '份', baseAmount: m.amount ?? 1, protein: m.protein, carbs: m.carbs, fat: m.fat, calories: m.calories })
-                  }
-                >
+                <button className="btn-ghost" style={{ fontSize: 18, padding: 6, color: saved ? 'var(--accent)' : 'var(--text-muted)' }}
+                  onClick={() => addSavedItem({ kind: 'meal', name: m.name, brand: m.brand, unit: m.unit ?? '份', baseAmount: m.amount ?? 1, protein: m.protein, carbs: m.carbs, fat: m.fat, calories: m.calories })}>
                   {saved ? '★' : '☆'}
                 </button>
-                <button className="btn-ghost" aria-label={t('common.cancel')} style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteMeal(m.id)}>
-                  ×
-                </button>
+                <button className="btn-ghost" aria-label="delete" style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteMeal(m.id)}>×</button>
               </div>
             )
           })}

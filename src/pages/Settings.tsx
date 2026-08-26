@@ -2,16 +2,23 @@ import { useState } from 'react'
 import { useStore } from '../data/store'
 import { useAuth } from '../data/auth'
 import { useT, type Lang } from '../lib/i18n'
+import { usePrefs, type EnergyUnit } from '../lib/prefs'
 
 export default function Settings() {
   const { profile, updateProfile } = useStore()
   const { session, signOut } = useAuth()
   const { t, lang, setLang } = useT()
+  const { energyUnit, setEnergyUnit, toEnergy, fromEnergy } = usePrefs()
   const [form, setForm] = useState(profile)
   const [saved, setSaved] = useState(false)
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: key === 'displayName' ? value : Number(value) || 0 }))
+    setSaved(false)
+  }
+
+  function setCalories(shown: string) {
+    setForm((f) => ({ ...f, targetCalories: Math.round(fromEnergy(Number(shown) || 0)) }))
     setSaved(false)
   }
 
@@ -24,28 +31,37 @@ export default function Settings() {
     { key: 'zh', label: '中文' },
     { key: 'en', label: 'English' },
   ]
+  const energyUnits: { key: EnergyUnit; label: string }[] = [
+    { key: 'kcal', label: t('energy.kcal') },
+    { key: 'kJ', label: t('energy.kJ') },
+  ]
+
+  const chipStyle = (active: boolean) => ({
+    flex: 1,
+    justifyContent: 'center' as const,
+    background: active ? 'var(--surface-2)' : 'var(--surface)',
+    color: active ? 'var(--accent)' : 'var(--text)',
+    borderColor: active ? 'var(--accent)' : 'var(--line)',
+    fontWeight: active ? 600 : 400,
+  })
 
   return (
     <div className="page">
-      {/* 语言 */}
+      {/* 偏好：语言 + 能量单位 */}
       <div className="card" style={{ marginTop: 8 }}>
         <p className="card-label">{t('settings.language')}</p>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {langs.map((l) => (
-            <button
-              key={l.key}
-              onClick={() => setLang(l.key)}
-              className="chip"
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                background: lang === l.key ? 'var(--surface-2)' : 'var(--surface)',
-                color: lang === l.key ? 'var(--accent)' : 'var(--text)',
-                borderColor: lang === l.key ? 'var(--accent)' : 'var(--line)',
-                fontWeight: lang === l.key ? 600 : 400,
-              }}
-            >
+            <button key={l.key} onClick={() => setLang(l.key)} className="chip" style={chipStyle(lang === l.key)}>
               {l.label}
+            </button>
+          ))}
+        </div>
+        <p className="card-label">{t('settings.energyUnit')}</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {energyUnits.map((u) => (
+            <button key={u.key} onClick={() => setEnergyUnit(u.key)} className="chip" style={chipStyle(energyUnit === u.key)}>
+              {u.label}
             </button>
           ))}
         </div>
@@ -67,8 +83,8 @@ export default function Settings() {
         <p className="card-label">{t('settings.dailyTargets')}</p>
         <div className="row">
           <div className="field">
-            <label>{t('settings.calKcal')}</label>
-            <input type="number" inputMode="decimal" value={form.targetCalories} onChange={(e) => set('targetCalories', e.target.value)} />
+            <label>{t('settings.energy')} ({t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')})</label>
+            <input type="number" inputMode="decimal" value={toEnergy(form.targetCalories)} onChange={(e) => setCalories(e.target.value)} />
           </div>
           <div className="field">
             <label>{t('log.proteinG')}</label>
