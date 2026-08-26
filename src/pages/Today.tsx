@@ -7,6 +7,7 @@ import { useT } from '../lib/i18n'
 import { usePrefs } from '../lib/prefs'
 import ProgressRing from '../components/ProgressRing'
 import MacroBar from '../components/MacroBar'
+import MonthCalendar from '../components/MonthCalendar'
 
 export default function Today() {
   const { meals, profile, latestWeight, prevWeight, weightLogs } = useStore()
@@ -18,6 +19,7 @@ export default function Today() {
 
   const todayMeals = useMemo(() => meals.filter((m) => m.date === today), [meals, today])
   const totals = useMemo(() => sumMacros(todayMeals), [todayMeals])
+  const datesWithMeals = useMemo(() => new Set(meals.map((m) => m.date)), [meals])
 
   const weightDelta =
     latestWeight && prevWeight ? +(latestWeight.weight - prevWeight.weight).toFixed(1) : null
@@ -149,6 +151,12 @@ export default function Today() {
       >
         ✦ {t('today.aiButton')}
       </button>
+
+      {/* 记录日历 —— 点某天进入详情 */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <p className="card-label">{t('today.calendar')}</p>
+        <MonthCalendar datesWithData={datesWithMeals} onSelect={(d) => navigate('/day/' + d)} />
+      </div>
     </div>
   )
 }

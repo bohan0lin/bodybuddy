@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { estimateCalories, round1, scale, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
@@ -25,6 +25,9 @@ const UNITS = ['g', '份', 'ml', '个', '勺']
 export default function LogMeal() {
   const { addMeal, updateMeal, meals, deleteMeal, savedItems, addSavedItem, updateSavedItem, deleteSavedItem } = useStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  const returnTo = useRef<string | null>(null)
+  const didInit = useRef(false)
   const { t, lang } = useT()
   const { energyUnit, toEnergy, fromEnergy } = usePrefs()
   const energyLabel = t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')
@@ -104,7 +107,25 @@ export default function LogMeal() {
     base.current = m.amount ? { amount: m.amount, p: m.protein, c: m.carbs, f: m.fat, cal: m.calories } : null
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
-  function cancelEdit() { setEdit(null); resetForm() }
+  function cancelEdit() {
+    const rt = returnTo.current
+    returnTo.current = null
+    setEdit(null)
+    resetForm()
+    if (rt) navigate(rt)
+  }
+
+  // 从某天详情进入编辑：读取路由 state（只处理一次）
+  useEffect(() => {
+    if (didInit.current) return
+    didInit.current = true
+    const st = location.state as { editMeal?: Meal; returnTo?: string } | null
+    if (st?.editMeal) {
+      returnTo.current = st.returnTo ?? null
+      startEditMeal(st.editMeal)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function changeAmount(val: string) {
     setAmount(val)
