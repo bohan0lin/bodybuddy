@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useStore } from '../data/store'
 import { useAuth } from '../data/auth'
 import { useT, type Lang } from '../lib/i18n'
-import { usePrefs, type EnergyUnit } from '../lib/prefs'
+import { usePrefs } from '../lib/prefs'
+import EnergyToggle from '../components/EnergyToggle'
 
 export default function Settings() {
   const { profile, updateProfile } = useStore()
   const { session, signOut } = useAuth()
   const { t, lang, setLang } = useT()
-  const { energyUnit, setEnergyUnit, toEnergy, fromEnergy } = usePrefs()
+  const { toEnergy, fromEnergy } = usePrefs()
   const [form, setForm] = useState(profile)
   const [saved, setSaved] = useState(false)
 
@@ -31,10 +32,6 @@ export default function Settings() {
     { key: 'zh', label: '中文' },
     { key: 'en', label: 'English' },
   ]
-  const energyUnits: { key: EnergyUnit; label: string }[] = [
-    { key: 'kcal', label: t('energy.kcal') },
-    { key: 'kJ', label: t('energy.kJ') },
-  ]
 
   const chipStyle = (active: boolean) => ({
     flex: 1,
@@ -47,21 +44,13 @@ export default function Settings() {
 
   return (
     <div className="page">
-      {/* 偏好：语言 + 能量单位 */}
+      {/* 语言 */}
       <div className="card" style={{ marginTop: 8 }}>
         <p className="card-label">{t('settings.language')}</p>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           {langs.map((l) => (
             <button key={l.key} onClick={() => setLang(l.key)} className="chip" style={chipStyle(lang === l.key)}>
               {l.label}
-            </button>
-          ))}
-        </div>
-        <p className="card-label">{t('settings.energyUnit')}</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {energyUnits.map((u) => (
-            <button key={u.key} onClick={() => setEnergyUnit(u.key)} className="chip" style={chipStyle(energyUnit === u.key)}>
-              {u.label}
             </button>
           ))}
         </div>
@@ -83,7 +72,10 @@ export default function Settings() {
         <p className="card-label">{t('settings.dailyTargets')}</p>
         <div className="row">
           <div className="field">
-            <label>{t('settings.energy')} ({t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')})</label>
+            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{t('settings.energy')}</span>
+              <EnergyToggle />
+            </label>
             <input type="number" inputMode="decimal" value={toEnergy(form.targetCalories)} onChange={(e) => setCalories(e.target.value)} />
           </div>
           <div className="field">

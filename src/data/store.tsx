@@ -46,6 +46,7 @@ const toSaved = (r: any): SavedItem => ({
   kind: r.kind,
   name: r.name,
   brand: r.brand ?? undefined,
+  createdAt: r.created_at ?? undefined,
   unit: r.unit,
   baseAmount: Number(r.base_amount),
   protein: Number(r.protein),
@@ -71,6 +72,7 @@ function uid(): string {
 interface StoreValue extends AppData {
   loading: boolean
   addMeal: (m: Omit<Meal, 'id' | 'createdAt'>) => void
+  updateMeal: (id: string, patch: Partial<Omit<Meal, 'id' | 'createdAt'>>) => void
   deleteMeal: (id: string) => void
   upsertWeight: (w: Omit<WeightLog, 'id'>) => void
   updateProfile: (p: Partial<Profile>) => void
@@ -116,7 +118,9 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
         profile,
         weightLogs: (weights.data ?? []).map(toWeight),
         meals: (meals.data ?? []).map(toMeal),
-        savedItems: (saved.data ?? []).map(toSaved),
+        savedItems: (saved.data ?? [])
+          .map(toSaved)
+          .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
       })
       setLoading(false)
     })()
@@ -152,6 +156,22 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
             calories: meal.calories,
           })
           .then(({ error }) => error && console.error('addMeal', error))
+      },
+
+      updateMeal: (id, patch) => {
+        setData((d) => ({ ...d, meals: d.meals.map((x) => (x.id === id ? { ...x, ...patch } : x)) }))
+        const row: Record<string, unknown> = {}
+        if (patch.date !== undefined) row.date = patch.date
+        if (patch.type !== undefined) row.type = patch.type
+        if (patch.name !== undefined) row.name = patch.name
+        if (patch.brand !== undefined) row.brand = patch.brand || null
+        if (patch.amount !== undefined) row.amount = patch.amount ?? null
+        if (patch.unit !== undefined) row.unit = patch.unit ?? null
+        if (patch.protein !== undefined) row.protein = patch.protein
+        if (patch.carbs !== undefined) row.carbs = patch.carbs
+        if (patch.fat !== undefined) row.fat = patch.fat
+        if (patch.calories !== undefined) row.calories = patch.calories
+        supabase.from('meals').update(row).eq('id', id).then(({ error }) => error && console.error('updateMeal', error))
       },
 
       deleteMeal: (id) => {
@@ -216,7 +236,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
               .then(({ error }) => error && console.error('updateSaved', error))
             return { ...d, savedItems: next }
           }
-          const item: SavedItem = { ...s, id: uid() }
+          const item: SavedItem = { ...s, id: uid(), createdAt: new Date().toISOString() }
           supabase
             .from('saved_items')
             .insert({

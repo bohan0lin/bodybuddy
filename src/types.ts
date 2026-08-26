@@ -65,6 +65,7 @@ export interface SavedItem {
   kind: SavedKind
   name: string
   brand?: string // 品牌，如某某牌鸡胸肉
+  createdAt?: string // 用于「最近」排序
   unit: string // 计量单位：g / 份 / ml / 个 …
   baseAmount: number // 以下营养值对应的分量，如 100（表示每 100g）
   protein: number
