@@ -146,6 +146,18 @@ const zh: Dict = {
   'login.errRegistered': '该邮箱已注册，请直接登录',
   'login.errPwLen': '密码至少需要 6 位',
   'login.errEmail': '请输入有效的邮箱地址',
+  // assistant
+  'assistant.title': 'AI 助手',
+  'assistant.greeting': '你好！我能回答你的营养问题、帮你拍照记账、把食物加入常用。试试问我或说「帮我记录…」。',
+  'assistant.placeholder': '问我，或说「帮我记录…」',
+  'assistant.thinking': '思考中…',
+  'assistant.confirm': '确认',
+  'assistant.dismiss': '忽略',
+  'assistant.logAction': '记录这一餐',
+  'assistant.saveAction': '加入常用',
+  'assistant.done': '已完成 ✓',
+  'assistant.failed': '出错了，请重试',
+  'assistant.photoReady': '已附带照片',
 }
 
 const en: Dict = {
@@ -278,6 +290,18 @@ const en: Dict = {
   'login.errRegistered': 'Email already registered — please sign in',
   'login.errPwLen': 'Password must be at least 6 characters',
   'login.errEmail': 'Please enter a valid email',
+  // assistant
+  'assistant.title': 'AI Assistant',
+  'assistant.greeting': 'Hi! Ask me about your nutrition, snap a photo to log a meal, or add foods to your library. Try asking, or say "log …".',
+  'assistant.placeholder': 'Ask me, or say "log …"',
+  'assistant.thinking': 'Thinking…',
+  'assistant.confirm': 'Confirm',
+  'assistant.dismiss': 'Dismiss',
+  'assistant.logAction': 'Log this meal',
+  'assistant.saveAction': 'Save to library',
+  'assistant.done': 'Done ✓',
+  'assistant.failed': 'Something went wrong, try again',
+  'assistant.photoReady': 'Photo attached',
 }
 
 const dict: Record<Lang, Dict> = { zh, en }

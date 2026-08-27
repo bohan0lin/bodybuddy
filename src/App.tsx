@@ -3,6 +3,7 @@ import { isConfigured } from './lib/supabase'
 import { useAuth } from './data/auth'
 import { StoreProvider } from './data/store'
 import BottomNav from './components/BottomNav'
+import Assistant from './components/Assistant'
 import Today from './pages/Today'
 import Body from './pages/Body'
 import LogMeal from './pages/LogMeal'
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/log" element={<LogMeal />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
+        <Assistant />
         <BottomNav />
       </div>
     </StoreProvider>

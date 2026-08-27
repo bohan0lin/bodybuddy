@@ -27,6 +27,9 @@ function apiDevPlugin(): Plugin {
             const mod = await server.ssrLoadModule('/api/lib/rag.ts')
             const [match] = await mod.lookupFoods([body.name])
             result = { match }
+          } else if (url.startsWith('/api/assistant')) {
+            const mod = await server.ssrLoadModule('/api/lib/assistant.ts')
+            result = await mod.assistantChat(body)
           } else return next()
 
           res.setHeader('content-type', 'application/json')

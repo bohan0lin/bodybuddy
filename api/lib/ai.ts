@@ -11,7 +11,7 @@ import { lookupFoods } from './rag'
 //   openai('gpt-4o-mini')         便宜、支持视觉                → 需要 OPENAI_API_KEY
 //   anthropic('claude-sonnet-5')  Claude 性价比高              → 需要 ANTHROPIC_API_KEY
 // ══════════════════════════════════════════════════════════════
-const MODEL = google('gemini-3.6-flash')
+export const MODEL = google('gemini-3.6-flash')
 
 // 引用一下未使用的 provider，避免 lint 报未使用（切换时随时会用到）
 void openai

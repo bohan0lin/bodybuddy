@@ -1,0 +1,215 @@
+import { useMemo, useRef, useState } from 'react'
+import { useStore } from '../data/store'
+import { sumMacros, todayStr } from '../lib/nutrition'
+import { postJson } from '../lib/api'
+import { fileToResizedBase64 } from '../lib/image'
+import { useT } from '../lib/i18n'
+import { usePrefs } from '../lib/prefs'
+import type { MealType } from '../types'
+
+interface Action {
+  type: 'log' | 'save'
+  mealType?: MealType
+  kind?: 'food' | 'meal'
+  name?: string
+  brand?: string
+  amount?: number
+  unit?: string
+  baseAmount?: number
+  protein?: number
+  carbs?: number
+  fat?: number
+  calories?: number
+}
+
+interface Msg {
+  role: 'user' | 'assistant'
+  text: string
+  image?: string
+  actions?: Action[]
+  done?: Record<number, boolean>
+}
+
+export default function Assistant() {
+  const { profile, meals, savedItems, latestWeight, addMeal, addSavedItem } = useStore()
+  const { t, lang } = useT()
+  const { energyUnit, toEnergy } = usePrefs()
+  const energyLabel = t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')
+
+  const [open, setOpen] = useState(false)
+  const [messages, setMessages] = useState<Msg[]>([])
+  const [input, setInput] = useState('')
+  const [image, setImage] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const context = useMemo(() => {
+    const today = todayStr()
+    const todayMeals = meals.filter((m) => m.date === today)
+    return {
+      targets: { protein: profile.targetProtein, carbs: profile.targetCarbs, fat: profile.targetFat, calories: profile.targetCalories },
+      consumed: sumMacros(todayMeals),
+      todayMeals: todayMeals.map((m) => ({ name: m.name, type: m.type })),
+      savedItems: savedItems.map((s) => ({ kind: s.kind, name: s.name, brand: s.brand, unit: s.unit, baseAmount: s.baseAmount, protein: s.protein, carbs: s.carbs, fat: s.fat, calories: s.calories })),
+      latestWeight: latestWeight ? { weight: latestWeight.weight, bodyFat: latestWeight.bodyFat } : undefined,
+      hour: new Date().getHours(),
+    }
+  }, [profile, meals, savedItems, latestWeight])
+
+  function scrollDown() {
+    requestAnimationFrame(() => {
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    })
+  }
+
+  async function pickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const { data, mediaType } = await fileToResizedBase64(file)
+    setImage(`data:${mediaType};base64,${data}`)
+  }
+
+  async function send() {
+    const text = input.trim()
+    if ((!text && !image) || loading) return
+    const userMsg: Msg = { role: 'user', text: text || (lang === 'zh' ? '这张图' : 'this photo'), image: image ?? undefined }
+    const history = [...messages, userMsg]
+    setMessages(history)
+    setInput('')
+    setImage(null)
+    setLoading(true)
+    scrollDown()
+    try {
+      // 只在最后一条带图片，历史图片不重复上传
+      const payloadMsgs = history.map((m, i) => ({ role: m.role, text: m.text, image: i === history.length - 1 ? m.image : undefined }))
+      const res = await postJson<{ reply: string; actions: Action[] }>('/api/assistant', { messages: payloadMsgs, context, lang })
+      setMessages((ms) => [...ms, { role: 'assistant', text: res.reply, actions: res.actions ?? [], done: {} }])
+    } catch {
+      setMessages((ms) => [...ms, { role: 'assistant', text: t('assistant.failed') }])
+    } finally {
+      setLoading(false)
+      scrollDown()
+    }
+  }
+
+  function confirmAction(mi: number, ai: number) {
+    const a = messages[mi].actions?.[ai]
+    if (!a) return
+    if (a.type === 'log') {
+      addMeal({ date: todayStr(), type: (a.mealType ?? 'snack') as MealType, name: a.name ?? '', brand: a.brand || undefined, amount: a.amount, unit: a.unit ?? 'g', protein: a.protein ?? 0, carbs: a.carbs ?? 0, fat: a.fat ?? 0, calories: a.calories ?? 0 })
+    } else {
+      addSavedItem({ kind: a.kind ?? 'food', name: a.name ?? '', brand: a.brand || undefined, unit: a.unit ?? 'g', baseAmount: a.baseAmount ?? 1, protein: a.protein ?? 0, carbs: a.carbs ?? 0, fat: a.fat ?? 0, calories: a.calories ?? 0 })
+    }
+    setMessages((ms) => ms.map((m, i) => (i === mi ? { ...m, done: { ...(m.done ?? {}), [ai]: true } } : m)))
+  }
+
+  function dismissAction(mi: number, ai: number) {
+    setMessages((ms) => ms.map((m, i) => (i === mi ? { ...m, done: { ...(m.done ?? {}), [ai]: true } } : m)))
+  }
+
+  return (
+    <>
+      {/* 浮动入口（每屏右上角） */}
+      <button
+        onClick={() => setOpen(true)}
+        aria-label={t('assistant.title')}
+        style={{
+          position: 'fixed',
+          top: 'calc(env(safe-area-inset-top) + 14px)',
+          right: 'max(16px, calc((100vw - 460px) / 2 + 16px))',
+          zIndex: 60,
+          width: 42,
+          height: 42,
+          borderRadius: '50%',
+          background: 'var(--accent)',
+          color: '#1a1206',
+          fontSize: 18,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+        }}
+      >
+        ✦
+      </button>
+
+      {open && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'var(--bg)' }}>
+          <div style={{ maxWidth: 460, margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'calc(env(safe-area-inset-top) + 16px) 20px 12px', borderBottom: '1px solid var(--line)' }}>
+              <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: '0.02em' }}>✦ {t('assistant.title')}</span>
+              <button className="btn-ghost" style={{ fontSize: 24, padding: 4 }} onClick={() => setOpen(false)} aria-label="close">×</button>
+            </div>
+
+            {/* messages */}
+            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '18px 16px' }}>
+              {messages.length === 0 && (
+                <p className="muted" style={{ fontSize: 14, lineHeight: 1.7, textAlign: 'center', padding: '20px 10px' }}>{t('assistant.greeting')}</p>
+              )}
+              {messages.map((m, mi) => (
+                <div key={mi} style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                  {m.image && <img src={m.image} alt="" style={{ maxWidth: 160, borderRadius: 12, marginBottom: 6 }} />}
+                  {m.text && (
+                    <div style={{ maxWidth: '85%', padding: '10px 14px', borderRadius: 14, fontSize: 14.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', background: m.role === 'user' ? 'var(--surface-2)' : 'var(--surface)', border: '1px solid var(--line)', color: m.role === 'user' ? 'var(--text)' : 'var(--text-dim)' }}>
+                      {m.text}
+                    </div>
+                  )}
+                  {/* 提议的动作卡片 */}
+                  {m.actions?.map((a, ai) => (
+                    <div key={ai} className="card" style={{ marginTop: 8, marginBottom: 0, width: '85%', padding: 16 }}>
+                      <p className="card-label" style={{ marginBottom: 10 }}>{a.type === 'log' ? t('assistant.logAction') : t('assistant.saveAction')}</p>
+                      <div style={{ fontWeight: 500 }}>
+                        {a.name}
+                        {a.brand ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {a.brand}</span> : null}
+                        {a.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.amount}{a.unit ?? ''}</span> : a.baseAmount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.baseAmount}{a.unit ?? ''}</span> : null}
+                      </div>
+                      <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                        {toEnergy(a.calories ?? 0)} {energyLabel} · {t('macro.protein')} {a.protein} {t('macro.carbs')} {a.carbs} {t('macro.fat')} {a.fat}
+                      </div>
+                      {m.done?.[ai] ? (
+                        <p style={{ color: 'var(--accent)', fontSize: 13, marginTop: 12, marginBottom: 0 }}>{t('assistant.done')}</p>
+                      ) : (
+                        <div className="row" style={{ marginTop: 14 }}>
+                          <button className="btn" style={{ padding: '10px' }} onClick={() => dismissAction(mi, ai)}>{t('assistant.dismiss')}</button>
+                          <button className="btn btn-accent" style={{ padding: '10px' }} onClick={() => confirmAction(mi, ai)}>{t('assistant.confirm')}</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {loading && <p className="muted" style={{ fontSize: 13 }}>{t('assistant.thinking')}</p>}
+            </div>
+
+            {/* input */}
+            <div style={{ borderTop: '1px solid var(--line)', padding: '12px 16px calc(12px + env(safe-area-inset-bottom))' }}>
+              {image && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <img src={image} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                  <span className="muted" style={{ fontSize: 12 }}>{t('assistant.photoReady')}</span>
+                  <button className="btn-ghost" style={{ fontSize: 16 }} onClick={() => setImage(null)}>×</button>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={pickPhoto} style={{ display: 'none' }} />
+                <button className="btn-ghost" style={{ fontSize: 22, padding: 6 }} onClick={() => fileRef.current?.click()} aria-label="photo">◐</button>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && send()}
+                  placeholder={t('assistant.placeholder')}
+                  style={{ flex: 1, padding: '11px 14px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 999, color: 'var(--text)', outline: 'none' }}
+                />
+                <button className="btn btn-accent" style={{ padding: '11px 16px' }} onClick={send} disabled={loading || (!input.trim() && !image)}>↑</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
