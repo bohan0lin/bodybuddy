@@ -28,6 +28,7 @@ const zh: Dict = {
   'today.aiButton': 'AI 建议 · 还能吃什么',
   'today.calendar': '记录日历',
   'day.total': '当日合计',
+  'day.meals': '当日餐食',
   'day.empty': '这天还没有记录',
   // macros
   'macro.protein': '蛋白',
@@ -167,6 +168,7 @@ const en: Dict = {
   'today.aiButton': 'AI · What to eat next',
   'today.calendar': 'Log calendar',
   'day.total': 'Day total',
+  'day.meals': 'Meals',
   'day.empty': 'Nothing logged this day',
   'macro.protein': 'Protein',
   'macro.carbs': 'Carbs',

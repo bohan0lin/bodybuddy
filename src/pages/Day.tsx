@@ -54,7 +54,7 @@ export default function Day() {
 
       {/* 当日餐食（点可编辑） */}
       <div className="card">
-        <p className="card-label">{t('log.loggedToday')}</p>
+        <p className="card-label">{t('day.meals')}</p>
         {dayMeals.length === 0 ? (
           <div className="empty">{t('day.empty')}</div>
         ) : (
