@@ -32,6 +32,9 @@ export default function Day() {
     return u
   }
 
+  const goEdit = (m: (typeof dayMeals)[number]) =>
+    navigate('/log', { state: { editMeal: m, returnTo: '/day/' + date } })
+
   return (
     <div className="page">
       <button className="btn-ghost" onClick={() => navigate('/')} style={{ padding: 0, marginBottom: 18, fontSize: 14, color: 'var(--text-dim)' }}>
@@ -52,6 +55,15 @@ export default function Day() {
         </div>
       </div>
 
+      {/* 补记这一天 */}
+      <button
+        className="btn btn-block"
+        style={{ marginBottom: 16 }}
+        onClick={() => navigate('/log', { state: { logDate: date, returnTo: '/day/' + date } })}
+      >
+        ＋ {t('nav.logMeal')}
+      </button>
+
       {/* 当日餐食（点可编辑） */}
       <div className="card">
         <p className="card-label">{t('day.meals')}</p>
@@ -60,10 +72,7 @@ export default function Day() {
         ) : (
           dayMeals.map((m) => (
             <div key={m.id} className="list-row">
-              <button
-                onClick={() => navigate('/log', { state: { editMeal: m, returnTo: '/day/' + date } })}
-                style={{ flex: 1, textAlign: 'left', minWidth: 0 }}
-              >
+              <button onClick={() => goEdit(m)} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
                 <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {m.name}
                   {m.brand && <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {m.brand}</span>}
@@ -73,7 +82,7 @@ export default function Day() {
                   {t('meal.' + m.type)} · {toEnergy(m.calories)} {energyLabel} · {t('macro.protein')} {m.protein} {t('macro.carbs')} {m.carbs} {t('macro.fat')} {m.fat}
                 </div>
               </button>
-              <span className="dim" style={{ fontSize: 13, marginRight: 4 }}>{t('log.edit')} ›</span>
+              <button className="btn-ghost" style={{ fontSize: 13, padding: '6px 8px', color: 'var(--accent)' }} onClick={() => goEdit(m)}>{t('log.edit')}</button>
               <button className="btn-ghost" aria-label="delete" style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteMeal(m.id)}>×</button>
             </div>
           ))

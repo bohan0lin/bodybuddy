@@ -116,6 +116,7 @@ const zh: Dict = {
   'log.allSaved': '全部常用',
   'log.editMeal': '编辑这一餐',
   'log.updateMeal': '更新记录',
+  'log.addingTo': '补记到 {d}',
   // ai
   'ai.remaining': '还剩额度',
   'ai.fromLibrary': '从我的常用',
@@ -262,6 +263,7 @@ const en: Dict = {
   'log.allSaved': 'All saved',
   'log.editMeal': 'Edit this meal',
   'log.updateMeal': 'Update entry',
+  'log.addingTo': 'Logging to {d}',
   'ai.remaining': 'Remaining today',
   'ai.fromLibrary': 'From my library',
   'ai.fromLibrarySub': 'pick from foods & meals',

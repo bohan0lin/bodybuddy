@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
-import { estimateCalories, round1, scale, todayStr } from '../lib/nutrition'
+import { estimateCalories, formatDateShort, round1, scale, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
@@ -28,6 +28,7 @@ export default function LogMeal() {
   const location = useLocation()
   const returnTo = useRef<string | null>(null)
   const didInit = useRef(false)
+  const [logDate, setLogDate] = useState<string | null>(null)
   const { t, lang } = useT()
   const { energyUnit, toEnergy, fromEnergy } = usePrefs()
   const energyLabel = t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')
@@ -119,11 +120,11 @@ export default function LogMeal() {
   useEffect(() => {
     if (didInit.current) return
     didInit.current = true
-    const st = location.state as { editMeal?: Meal; returnTo?: string } | null
-    if (st?.editMeal) {
-      returnTo.current = st.returnTo ?? null
-      startEditMeal(st.editMeal)
-    }
+    const st = location.state as { editMeal?: Meal; logDate?: string; returnTo?: string } | null
+    if (!st) return
+    returnTo.current = st.returnTo ?? null
+    if (st.editMeal) startEditMeal(st.editMeal)
+    else if (st.logDate) setLogDate(st.logDate)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -178,9 +179,9 @@ export default function LogMeal() {
   function handleSave() {
     if (!name.trim()) return
     const { p, c, f, cal, amt } = currentFields()
-    addMeal({ date: todayStr(), type, name: name.trim(), brand: brand.trim() || undefined, amount: amt, unit, protein: p, carbs: c, fat: f, calories: cal })
+    addMeal({ date: logDate ?? todayStr(), type, name: name.trim(), brand: brand.trim() || undefined, amount: amt, unit, protein: p, carbs: c, fat: f, calories: cal })
     if (saveToLib) addSavedItem({ kind: pickTab, name: name.trim(), brand: brand.trim() || undefined, unit, baseAmount: amt ?? 1, protein: p, carbs: c, fat: f, calories: cal })
-    navigate('/')
+    navigate(returnTo.current ?? '/')
   }
   function savePrimary() {
     if (!name.trim()) return
@@ -262,6 +263,7 @@ export default function LogMeal() {
         )}
       </div>
 
+      {logDate && edit === null && <p style={{ fontSize: 13, color: 'var(--accent)', margin: '0 0 12px', textAlign: 'center' }}>{t('log.addingTo', { d: formatDateShort(logDate) })}</p>}
       {edit?.kind === 'meal' && <p style={{ fontSize: 13, color: 'var(--accent)', margin: '0 0 12px', textAlign: 'center' }}>{t('log.editMeal')}</p>}
       {edit?.kind === 'saved' && <p style={{ fontSize: 13, color: 'var(--accent)', margin: '0 0 12px', textAlign: 'center' }}>{t('log.editing')}</p>}
 
@@ -341,7 +343,7 @@ export default function LogMeal() {
       </div>
 
       {/* 今日已记录（点可编辑） */}
-      {edit === null && todayMeals.length > 0 && (
+      {edit === null && !logDate && todayMeals.length > 0 && (
         <div className="card" style={{ marginTop: 16 }}>
           <p className="card-label">{t('log.loggedToday')}</p>
           {todayMeals.map((m) => (
@@ -350,7 +352,7 @@ export default function LogMeal() {
                 <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}{m.brand && <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {m.brand}</span>}{m.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {m.amount}{unitLabel(m.unit ?? '')}</span> : null}</div>
                 <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{t('meal.' + m.type)} · {macroLine(m.calories, m.protein, m.carbs, m.fat)}</div>
               </button>
-              <span className="dim" style={{ fontSize: 13, marginRight: 4 }}>{t('log.edit')} ›</span>
+              <button className="btn-ghost" style={{ fontSize: 13, padding: '6px 8px', color: 'var(--accent)' }} onClick={() => startEditMeal(m)}>{t('log.edit')}</button>
               <button className="btn-ghost" aria-label="delete" style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteMeal(m.id)}>×</button>
             </div>
           ))}
