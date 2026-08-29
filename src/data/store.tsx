@@ -9,11 +9,11 @@ import { supabase } from '../lib/supabase'
 
 const DEFAULT_PROFILE: Profile = {
   displayName: '我',
-  heightCm: 170,
-  targetProtein: 140,
-  targetCarbs: 200,
-  targetFat: 60,
-  targetCalories: 1900,
+  heightCm: 0,
+  targetProtein: 0,
+  targetCarbs: 0,
+  targetFat: 0,
+  targetCalories: 0,
 }
 
 interface AppData {

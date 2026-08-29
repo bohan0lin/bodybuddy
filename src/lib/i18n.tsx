@@ -13,6 +13,7 @@ const zh: Dict = {
   // common
   'common.backToday': '‹ 今日',
   'common.backTrend': '‹ 体重趋势',
+  'common.backCalendar': '‹ 日历',
   'common.save': '保存',
   'common.cancel': '取消',
   'common.manage': '管理',
@@ -171,6 +172,7 @@ const en: Dict = {
   'nav.logMeal': 'Log meal',
   'common.backToday': '‹ Today',
   'common.backTrend': '‹ Weight trend',
+  'common.backCalendar': '‹ Calendar',
   'common.save': 'Save',
   'common.cancel': 'Cancel',
   'common.manage': 'Manage',

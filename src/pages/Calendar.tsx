@@ -61,7 +61,7 @@ export default function Calendar() {
             <button
               key={i}
               disabled={isFuture}
-              onClick={() => !isFuture && navigate('/day/' + date)}
+              onClick={() => !isFuture && navigate('/day/' + date, { state: { back: '/calendar' } })}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '6px 0', borderRadius: 10, background: isToday ? 'var(--accent-dim)' : 'transparent', cursor: isFuture ? 'default' : 'pointer' }}
             >
               <span className="num" style={{ fontSize: 12, color: isToday ? 'var(--accent)' : isFuture ? 'var(--text-muted)' : 'var(--text)', fontWeight: isToday ? 600 : 400 }}>{d}</span>

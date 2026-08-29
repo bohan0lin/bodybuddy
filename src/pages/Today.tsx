@@ -4,7 +4,6 @@ import { Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { useStore } from '../data/store'
 import { dateOffset, formatDateShort, macrosByDate, sumMacros, todayStr, weekdayOf } from '../lib/nutrition'
 import { useT } from '../lib/i18n'
-import { usePrefs } from '../lib/prefs'
 import ProgressRing from '../components/ProgressRing'
 import MacroBar from '../components/MacroBar'
 import DayRings from '../components/DayRings'
@@ -13,8 +12,6 @@ export default function Today() {
   const { meals, profile, latestWeight, prevWeight, weightLogs } = useStore()
   const navigate = useNavigate()
   const { t, lang } = useT()
-  const { energyUnit, toEnergy } = usePrefs()
-  const energyLabel = t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')
   const today = todayStr()
 
   const todayMeals = useMemo(() => meals.filter((m) => m.date === today), [meals, today])
@@ -76,7 +73,7 @@ export default function Today() {
       <div className="card" style={{ padding: '18px 12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           {week.map((d) => (
-            <button key={d.date} onClick={() => navigate('/day/' + d.date)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1 }}>
+            <button key={d.date} onClick={() => navigate('/day/' + d.date, { state: { back: '/' } })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1 }}>
               <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: d.isToday ? 'var(--accent)' : 'var(--text-muted)' }}>{d.wd}</span>
               <DayRings protein={d.m.protein} carbs={d.m.carbs} fat={d.m.fat} targets={targets} size={36} stroke={3} />
             </button>
@@ -91,7 +88,7 @@ export default function Today() {
           <span className="dim" style={{ fontSize: 13 }}>{t('today.logMeal')} ›</span>
         </div>
         <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-          <ProgressRing value={toEnergy(totals.calories)} target={toEnergy(profile.targetCalories)} caption={energyLabel} />
+          <ProgressRing value={totals.calories} target={profile.targetCalories} caption={t('today.kcal')} />
           <div style={{ flex: 1 }}>
             <MacroBar label={t('macro.protein')} value={totals.protein} target={profile.targetProtein} color="var(--protein)" />
             <MacroBar label={t('macro.carbs')} value={totals.carbs} target={profile.targetCarbs} color="var(--carbs)" />

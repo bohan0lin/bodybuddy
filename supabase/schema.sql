@@ -8,11 +8,11 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null default '我',
-  height_cm numeric not null default 170,
-  target_protein numeric not null default 140,
-  target_carbs numeric not null default 200,
-  target_fat numeric not null default 60,
-  target_calories numeric not null default 1900,
+  height_cm numeric not null default 0,
+  target_protein numeric not null default 0,
+  target_carbs numeric not null default 0,
+  target_fat numeric not null default 0,
+  target_calories numeric not null default 0,
   created_at timestamptz not null default now()
 );
 

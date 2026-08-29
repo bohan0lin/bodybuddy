@@ -30,8 +30,8 @@ export default function LogMeal() {
   const didInit = useRef(false)
   const [logDate, setLogDate] = useState<string | null>(null)
   const { t, lang } = useT()
-  const { energyUnit, toEnergy, fromEnergy } = usePrefs()
-  const energyLabel = t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')
+  const { toEnergy, fromEnergy } = usePrefs()
+  const kcalLabel = t('today.kcal') // 显示永远千卡
   const today = todayStr()
 
   const [type, setType] = useState<MealType>(guessMealType())
@@ -198,7 +198,7 @@ export default function LogMeal() {
   const quickAmounts = base.current ? [0.5, 1, 1.5, 2].map((k) => round1(base.current!.amount * k)) : []
 
   const macroLine = (cal: number, p: number, c: number, f: number) =>
-    `${toEnergy(cal)} ${energyLabel} · ${t('macro.protein')} ${p} ${t('macro.carbs')} ${c} ${t('macro.fat')} ${f}`
+    `${Math.round(cal)} ${kcalLabel} · ${t('macro.protein')} ${p} ${t('macro.carbs')} ${c} ${t('macro.fat')} ${f}`
 
   return (
     <div className="page">

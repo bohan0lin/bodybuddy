@@ -4,7 +4,6 @@ import { sumMacros, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
-import { usePrefs } from '../lib/prefs'
 import type { MealType } from '../types'
 
 interface Action {
@@ -33,8 +32,7 @@ interface Msg {
 export default function Assistant() {
   const { profile, meals, savedItems, latestWeight, addMeal, addSavedItem } = useStore()
   const { t, lang } = useT()
-  const { energyUnit, toEnergy } = usePrefs()
-  const energyLabel = t(energyUnit === 'kJ' ? 'energy.kJ' : 'energy.kcal')
+  const kcalLabel = t('today.kcal')
 
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Msg[]>([])
@@ -168,7 +166,7 @@ export default function Assistant() {
                         {a.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.amount}{a.unit ?? ''}</span> : a.baseAmount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.baseAmount}{a.unit ?? ''}</span> : null}
                       </div>
                       <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                        {toEnergy(a.calories ?? 0)} {energyLabel} · {t('macro.protein')} {a.protein} {t('macro.carbs')} {a.carbs} {t('macro.fat')} {a.fat}
+                        {Math.round(a.calories ?? 0)} {kcalLabel} · {t('macro.protein')} {a.protein} {t('macro.carbs')} {a.carbs} {t('macro.fat')} {a.fat}
                       </div>
                       {m.done?.[ai] ? (
                         <p style={{ color: 'var(--accent)', fontSize: 13, marginTop: 12, marginBottom: 0 }}>{t('assistant.done')}</p>
