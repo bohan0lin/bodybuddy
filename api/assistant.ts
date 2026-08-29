@@ -1,9 +1,7 @@
-import { assistantChat } from './lib/assistant'
-
-// Vercel 函数最长执行时间（秒）——助手要多轮模型调用，避免默认 10s 超时
+// Vercel Serverless Function：POST /api/assistant
+// 动态 import 依赖，使导入期错误也能被捕获并返回（而非 FUNCTION_INVOCATION_FAILED）
 export const maxDuration = 60
 
-// Vercel Serverless Function：POST /api/assistant
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -12,10 +10,12 @@ export default async function handler(req: any, res: any) {
   }
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    const { assistantChat } = await import('./lib/assistant')
     const result = await assistantChat(body)
     res.status(200).json(result)
   } catch (e) {
     console.error('assistant error', e)
-    res.status(500).json({ error: e instanceof Error ? e.message : '出错了' })
+    const detail = e instanceof Error ? e.stack || e.message : String(e)
+    res.status(500).json({ error: detail })
   }
 }
