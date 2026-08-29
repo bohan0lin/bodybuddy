@@ -62,7 +62,7 @@ export default function Today() {
       {/* 顶部：日期 + 日历入口 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
         <p className="eyebrow" style={{ margin: 0 }}>{dateLabel}</p>
-        <button className="btn-ghost" style={{ padding: 4, color: 'var(--text-dim)' }} onClick={() => navigate('/calendar')} aria-label="calendar">
+        <button className="btn-ghost" style={{ padding: 4, color: 'var(--text-dim)', marginRight: 44 }} onClick={() => navigate('/calendar')} aria-label="calendar">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
             <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
             <line x1="3" y1="9" x2="21" y2="9" />
