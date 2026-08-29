@@ -3,9 +3,23 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App'
+import { registerSW } from 'virtual:pwa-register'
 import { AuthProvider } from './data/auth'
 import { I18nProvider } from './lib/i18n'
 import { PrefsProvider } from './lib/prefs'
+
+// 注册 Service Worker：有新版本自动应用并刷新；定时 + 回到前台时检查更新
+registerSW({
+  immediate: true,
+  onRegisteredSW(_swUrl, r) {
+    if (!r) return
+    const check = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) r.update()
+    }
+    setInterval(check, 60 * 60 * 1000) // 每小时
+    document.addEventListener('visibilitychange', check) // 每次回到前台
+  },
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -62,6 +62,7 @@ export default defineConfig(({ mode }) => {
       apiDevPlugin(),
       VitePWA({
         registerType: 'autoUpdate',
+        injectRegister: false, // 手动在 main.tsx 注册，加入定时/回前台检查更新
         includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
         manifest: {
           name: 'BodyBuddy',
