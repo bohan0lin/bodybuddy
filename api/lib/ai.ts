@@ -89,7 +89,7 @@ ${commonRules}
 今天已吃：${input.meals.map((m) => m.name).join('、') || '还没吃'}
 当前时间：${input.hour} 点${libraryBlock}`
 
-  const { text } = await generateText({ model: MODEL, system, prompt })
+  const { text } = await generateText({ model: MODEL, system, prompt, maxRetries: 3 })
   return { text: text.trim() }
 }
 
@@ -140,6 +140,7 @@ ${nameRule}
     model: MODEL,
     schema: recogSchema,
     system,
+    maxRetries: 3,
     messages: [
       {
         role: 'user',

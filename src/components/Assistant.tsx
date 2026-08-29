@@ -93,7 +93,9 @@ export default function Assistant() {
       const res = await postJson<{ reply: string; actions: Action[] }>('/api/assistant', { messages: payloadMsgs, context, lang })
       setMessages((ms) => [...ms, { role: 'assistant', text: res.reply, actions: res.actions ?? [], done: {} }])
     } catch (e) {
-      setMessages((ms) => [...ms, { role: 'assistant', text: t('assistant.failed') + (e instanceof Error ? '\n\n[' + e.message + ']' : '') }])
+      const msg = e instanceof Error ? e.message : ''
+      const busy = /503|overload|unavailable|429|rate limit/i.test(msg)
+      setMessages((ms) => [...ms, { role: 'assistant', text: busy ? t('assistant.busy') : t('assistant.failed') + (msg ? '\n\n[' + msg + ']' : '') }])
     } finally {
       setLoading(false)
       scrollDown()

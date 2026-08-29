@@ -163,6 +163,7 @@ const zh: Dict = {
   'assistant.saveAction': '加入常用',
   'assistant.done': '已完成 ✓',
   'assistant.failed': '出错了，请重试',
+  'assistant.busy': '模型有点忙（服务器繁忙），请过几秒再试一次 🙏',
   'assistant.photoReady': '已附带照片',
 }
 
@@ -313,6 +314,7 @@ const en: Dict = {
   'assistant.saveAction': 'Save to library',
   'assistant.done': 'Done ✓',
   'assistant.failed': 'Something went wrong, try again',
+  'assistant.busy': 'The model is busy right now — please try again in a few seconds 🙏',
   'assistant.photoReady': 'Photo attached',
 }
 

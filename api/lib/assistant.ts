@@ -134,6 +134,6 @@ export async function assistantChat(input: {
   })
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
-  const { text } = await generateText({ model: MODEL, system, messages, tools, stopWhen: stepCountIs(4) })
+  const { text } = await generateText({ model: MODEL, system, messages, tools, stopWhen: stepCountIs(4), maxRetries: 4 })
   return { reply: text.trim(), actions }
 }
