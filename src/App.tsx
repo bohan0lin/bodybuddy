@@ -11,6 +11,7 @@ import Settings from './pages/Settings'
 import Login from './pages/Login'
 import AISuggest from './pages/AISuggest'
 import History from './pages/History'
+import Calendar from './pages/Calendar'
 import Day from './pages/Day'
 
 function Splash({ text }: { text: string }) {
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/" element={<Today />} />
           <Route path="/body" element={<Body />} />
           <Route path="/history" element={<History />} />
+          <Route path="/calendar" element={<Calendar />} />
           <Route path="/day/:date" element={<Day />} />
           <Route path="/ai" element={<AISuggest />} />
           <Route path="/log" element={<LogMeal />} />

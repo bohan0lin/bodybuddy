@@ -31,6 +31,30 @@ export function sumMacros(meals: Meal[]): Macros {
   )
 }
 
+// 把餐食按日期汇总成 { date: Macros }
+export function macrosByDate(meals: Meal[]): Map<string, Macros> {
+  const map = new Map<string, Macros>()
+  for (const m of meals) {
+    const cur = map.get(m.date) ?? { protein: 0, carbs: 0, fat: 0, calories: 0 }
+    cur.protein += m.protein
+    cur.carbs += m.carbs
+    cur.fat += m.fat
+    cur.calories += m.calories
+    map.set(m.date, cur)
+  }
+  return map
+}
+
+// 相对今天的偏移日期（0=今天，-1=昨天）转 YYYY-MM-DD
+export function dateOffset(days: number): string {
+  return todayStr(new Date(Date.now() + days * 86400000))
+}
+
+// YYYY-MM-DD 的星期几（0=周日）
+export function weekdayOf(dateStr: string): number {
+  return new Date(dateStr + 'T00:00:00').getDay()
+}
+
 export function pct(value: number, target: number): number {
   if (target <= 0) return 0
   return Math.min(100, Math.round((value / target) * 100))
