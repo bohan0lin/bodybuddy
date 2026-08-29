@@ -1,5 +1,7 @@
 import { recognizeFood } from './lib/ai'
 
+export const maxDuration = 60
+
 // Vercel Serverless Function：POST /api/recognize
 // body: { image: base64字符串, mediaType: 'image/jpeg' ... }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
