@@ -328,7 +328,7 @@ export default function LogMeal() {
 
         {edit === null && (
           <button onClick={() => setSaveToLib((v) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '4px 0', color: saveToLib ? 'var(--accent)' : 'var(--text-dim)' }}>
-            <span style={{ width: 20, height: 20, borderRadius: 6, border: '1px solid ' + (saveToLib ? 'var(--accent)' : 'var(--line-strong)'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: saveToLib ? 'var(--accent)' : 'transparent', color: '#1a1206' }}>{saveToLib ? '✓' : ''}</span>
+            <span style={{ width: 20, height: 20, borderRadius: 6, border: '1px solid ' + (saveToLib ? 'var(--accent)' : 'var(--line-strong)'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: saveToLib ? 'var(--accent)' : 'transparent', color: 'var(--accent-fg)' }}>{saveToLib ? '✓' : ''}</span>
             <span style={{ fontSize: 14 }}>{pickTab === 'food' ? t('log.saveToFreqFood') : t('log.saveToFreqMeal')}<span className="muted" style={{ fontSize: 12 }}>{t('log.saveBasis')}</span></span>
           </button>
         )}

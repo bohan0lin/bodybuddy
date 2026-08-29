@@ -125,7 +125,7 @@ export default function Assistant() {
           height: 42,
           borderRadius: '50%',
           background: 'var(--accent)',
-          color: '#1a1206',
+          color: 'var(--accent-fg)',
           fontSize: 18,
           display: 'flex',
           alignItems: 'center',

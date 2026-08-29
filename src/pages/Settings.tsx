@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useStore } from '../data/store'
 import { useAuth } from '../data/auth'
 import { useT, type Lang } from '../lib/i18n'
-import { usePrefs } from '../lib/prefs'
+import { usePrefs, type Theme } from '../lib/prefs'
 import EnergyToggle from '../components/EnergyToggle'
 
 export default function Settings() {
   const { profile, updateProfile } = useStore()
   const { session, signOut } = useAuth()
   const { t, lang, setLang } = useT()
-  const { toEnergy, fromEnergy } = usePrefs()
+  const { toEnergy, fromEnergy, theme, setTheme } = usePrefs()
   const [form, setForm] = useState(profile)
   const [saved, setSaved] = useState(false)
 
@@ -32,6 +32,11 @@ export default function Settings() {
     { key: 'zh', label: '中文' },
     { key: 'en', label: 'English' },
   ]
+  const themes: { key: Theme; label: string }[] = [
+    { key: 'system', label: t('theme.system') },
+    { key: 'light', label: t('theme.light') },
+    { key: 'dark', label: t('theme.dark') },
+  ]
 
   const chipStyle = (active: boolean) => ({
     flex: 1,
@@ -51,6 +56,18 @@ export default function Settings() {
           {langs.map((l) => (
             <button key={l.key} onClick={() => setLang(l.key)} className="chip" style={chipStyle(lang === l.key)}>
               {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 主题 */}
+      <div className="card">
+        <p className="card-label">{t('settings.theme')}</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {themes.map((th) => (
+            <button key={th.key} onClick={() => setTheme(th.key)} className="chip" style={chipStyle(theme === th.key)}>
+              {th.label}
             </button>
           ))}
         </div>

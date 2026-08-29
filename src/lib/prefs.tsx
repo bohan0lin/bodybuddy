@@ -1,12 +1,15 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 
 export type EnergyUnit = 'kcal' | 'kJ'
-const STORAGE_KEY = 'bodybuddy:energy'
+export type Theme = 'system' | 'light' | 'dark'
+
+const ENERGY_KEY = 'bodybuddy:energy'
+const THEME_KEY = 'bodybuddy:theme'
 const KJ_PER_KCAL = 4.184
 
-function detect(): EnergyUnit {
+function detectEnergy(): EnergyUnit {
   try {
-    const s = localStorage.getItem(STORAGE_KEY)
+    const s = localStorage.getItem(ENERGY_KEY)
     if (s === 'kcal' || s === 'kJ') return s
   } catch {
     // ignore
@@ -14,22 +17,55 @@ function detect(): EnergyUnit {
   return 'kcal'
 }
 
+function detectTheme(): Theme {
+  try {
+    const s = localStorage.getItem(THEME_KEY)
+    if (s === 'system' || s === 'light' || s === 'dark') return s
+  } catch {
+    // ignore
+  }
+  return 'system'
+}
+
+// 把主题应用到 <html data-theme>；system 时移除，交给 prefers-color-scheme
+function applyTheme(theme: Theme) {
+  const root = document.documentElement
+  if (theme === 'system') root.removeAttribute('data-theme')
+  else root.setAttribute('data-theme', theme)
+}
+
 interface PrefsValue {
   energyUnit: EnergyUnit
   setEnergyUnit: (u: EnergyUnit) => void
-  toEnergy: (kcal: number) => number // 千卡 → 当前单位（取整）
-  fromEnergy: (shown: number) => number // 当前单位 → 千卡（存储用）
+  toEnergy: (kcal: number) => number
+  fromEnergy: (shown: number) => number
+  theme: Theme
+  setTheme: (t: Theme) => void
 }
 
 const PrefsContext = createContext<PrefsValue | null>(null)
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
-  const [energyUnit, setU] = useState<EnergyUnit>(detect)
+  const [energyUnit, setU] = useState<EnergyUnit>(detectEnergy)
+  const [theme, setT] = useState<Theme>(detectTheme)
+
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
 
   const setEnergyUnit = useCallback((u: EnergyUnit) => {
     setU(u)
     try {
-      localStorage.setItem(STORAGE_KEY, u)
+      localStorage.setItem(ENERGY_KEY, u)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const setTheme = useCallback((t: Theme) => {
+    setT(t)
+    try {
+      localStorage.setItem(THEME_KEY, t)
     } catch {
       // ignore
     }
@@ -45,7 +81,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   )
 
   return (
-    <PrefsContext.Provider value={{ energyUnit, setEnergyUnit, toEnergy, fromEnergy }}>
+    <PrefsContext.Provider value={{ energyUnit, setEnergyUnit, toEnergy, fromEnergy, theme, setTheme }}>
       {children}
     </PrefsContext.Provider>
   )
