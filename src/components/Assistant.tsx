@@ -195,8 +195,13 @@ export default function Assistant() {
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={pickPhoto} style={{ display: 'none' }} />
-                <button className="btn-ghost" style={{ fontSize: 22, padding: 6 }} onClick={() => fileRef.current?.click()} aria-label="photo">◐</button>
+                <input ref={fileRef} type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
+                <button className="btn-ghost" style={{ padding: 6, color: 'var(--text-dim)', display: 'flex' }} onClick={() => fileRef.current?.click()} aria-label="photo">
+                  <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 8h3l1.4-2h7.2L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+                    <circle cx="12" cy="13" r="3.2" />
+                  </svg>
+                </button>
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
