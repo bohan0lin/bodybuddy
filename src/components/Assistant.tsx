@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useStore } from '../data/store'
-import { sumMacros, todayStr } from '../lib/nutrition'
+import { dateOffset, macrosByDate, sumMacros, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
@@ -45,10 +45,17 @@ export default function Assistant() {
   const context = useMemo(() => {
     const today = todayStr()
     const todayMeals = meals.filter((m) => m.date === today)
+    const byDate = macrosByDate(meals)
+    const recentDays = Array.from({ length: 7 }, (_, i) => {
+      const d = dateOffset(i - 6)
+      const mm = byDate.get(d) ?? { protein: 0, carbs: 0, fat: 0, calories: 0 }
+      return { date: d, calories: Math.round(mm.calories), protein: Math.round(mm.protein), carbs: Math.round(mm.carbs), fat: Math.round(mm.fat) }
+    })
     return {
       targets: { protein: profile.targetProtein, carbs: profile.targetCarbs, fat: profile.targetFat, calories: profile.targetCalories },
       consumed: sumMacros(todayMeals),
       todayMeals: todayMeals.map((m) => ({ name: m.name, type: m.type })),
+      recentDays,
       savedItems: savedItems.map((s) => ({ kind: s.kind, name: s.name, brand: s.brand, unit: s.unit, baseAmount: s.baseAmount, protein: s.protein, carbs: s.carbs, fat: s.fat, calories: s.calories })),
       latestWeight: latestWeight ? { weight: latestWeight.weight, bodyFat: latestWeight.bodyFat } : undefined,
       hour: new Date().getHours(),
@@ -85,8 +92,8 @@ export default function Assistant() {
       const payloadMsgs = history.map((m, i) => ({ role: m.role, text: m.text, image: i === history.length - 1 ? m.image : undefined }))
       const res = await postJson<{ reply: string; actions: Action[] }>('/api/assistant', { messages: payloadMsgs, context, lang })
       setMessages((ms) => [...ms, { role: 'assistant', text: res.reply, actions: res.actions ?? [], done: {} }])
-    } catch {
-      setMessages((ms) => [...ms, { role: 'assistant', text: t('assistant.failed') }])
+    } catch (e) {
+      setMessages((ms) => [...ms, { role: 'assistant', text: t('assistant.failed') + (e instanceof Error ? '\n\n[' + e.message + ']' : '') }])
     } finally {
       setLoading(false)
       scrollDown()

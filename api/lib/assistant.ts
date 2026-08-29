@@ -8,6 +8,7 @@ export interface AssistantContext {
   targets: Macros
   consumed: Macros
   todayMeals: { name: string; type: string }[]
+  recentDays?: { date: string; calories: number; protein: number; carbs: number; fat: number }[]
   savedItems: { kind: string; name: string; brand?: string; unit: string; baseAmount: number; protein: number; carbs: number; fat: number; calories: number }[]
   latestWeight?: { weight: number; bodyFat?: number }
   hour: number
@@ -60,6 +61,8 @@ ${langRule}
 今天已摄入：热量 ${Math.round(ctx.consumed.calories)}、蛋白 ${Math.round(ctx.consumed.protein)}g、碳水 ${Math.round(ctx.consumed.carbs)}g、脂肪 ${Math.round(ctx.consumed.fat)}g
 今天还剩：热量 ${rem.calories}、蛋白 ${rem.protein}g、碳水 ${rem.carbs}g、脂肪 ${rem.fat}g
 今天已吃：${ctx.todayMeals.map((m) => m.name).join('、') || '还没吃'}
+近 7 天摄入（日期: 热量/蛋白/碳水/脂肪）：
+${(ctx.recentDays ?? []).map((d) => `${d.date}: ${d.calories}千卡 蛋${d.protein} 碳${d.carbs} 脂${d.fat}`).join('\n') || '无'}
 最新体重：${ctx.latestWeight ? `${ctx.latestWeight.weight}kg${ctx.latestWeight.bodyFat != null ? ` 体脂${ctx.latestWeight.bodyFat}%` : ''}` : '未记录'}
 当前时间：${ctx.hour} 点
 常用清单：
@@ -67,6 +70,7 @@ ${saved || '（空）'}
 
 【规则】
 - 用户问目标/营养/建议时，直接用上面的数据回答，简短。
+- 用户问"最近吃得怎么样/这几天/趋势"，用近 7 天摄入数据分析（是否达标、蛋白够不够、波动等），给简短点评+1 个改进建议。
 - 用户说"我吃了…帮我记录"或发来食物照片说吃了多少，就调用 logMeal 工具提出记账（估算营养、按分量换算；能称重的用 g）。可以参考常用清单里的数据。
 - 用户说"加到常用/收藏"，调用 saveFavorite 工具提出保存。
 - 调用工具后，用一句话告诉用户"已为你准备好，请确认"。不要假装已经保存——真正保存需要用户点确认。
