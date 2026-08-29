@@ -139,8 +139,8 @@ export default function Today() {
         )}
       </button>
 
-      {/* AI 建议 */}
-      <button className="btn btn-accent btn-block" onClick={() => navigate('/ai')} style={{ padding: '18px', fontSize: 16 }}>
+      {/* AI 生成今日饮食（从常用库直接生成） */}
+      <button className="btn btn-accent btn-block" onClick={() => navigate('/ai', { state: { auto: 'library' } })} style={{ padding: '18px', fontSize: 16 }}>
         ✦ {t('today.aiButton')}
       </button>
     </div>

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { sumMacros, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
@@ -10,8 +10,10 @@ type Mode = 'library' | 'general'
 export default function AISuggest() {
   const { meals, profile, savedItems } = useStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const { t, lang } = useT()
   const today = todayStr()
+  const didAuto = useRef(false)
 
   const todayMeals = useMemo(() => meals.filter((m) => m.date === today), [meals, today])
   const totals = useMemo(() => sumMacros(todayMeals), [todayMeals])
@@ -32,6 +34,15 @@ export default function AISuggest() {
   const [mode, setMode] = useState<Mode | null>(null)
   const [text, setText] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // 从主页「AI 生成今日饮食」进入时，自动生成（从常用库）
+  useEffect(() => {
+    if (didAuto.current) return
+    didAuto.current = true
+    const auto = (location.state as { auto?: Mode } | null)?.auto
+    if (auto) run(auto)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function run(m: Mode) {
     setMode(m)
