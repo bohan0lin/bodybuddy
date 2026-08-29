@@ -1,4 +1,4 @@
-import { lookupFoods } from './lib/rag'
+import { lookupFoods } from './lib/rag.js'
 
 // Vercel Serverless Function：POST /api/lookup
 // body: { name: string } → { match: FoodMatch | null }

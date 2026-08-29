@@ -1,6 +1,6 @@
 import { generateText, tool, stepCountIs } from 'ai'
 import { z } from 'zod'
-import { MODEL } from './ai'
+import { MODEL } from './ai.js'
 
 type Macros = { protein: number; carbs: number; fat: number; calories: number }
 

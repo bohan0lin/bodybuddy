@@ -1,4 +1,4 @@
-import { suggestMeal } from './lib/ai'
+import { suggestMeal } from './lib/ai.js'
 
 export const maxDuration = 60
 

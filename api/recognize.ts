@@ -1,4 +1,4 @@
-import { recognizeFood } from './lib/ai'
+import { recognizeFood } from './lib/ai.js'
 
 export const maxDuration = 60
 

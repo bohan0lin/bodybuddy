@@ -3,7 +3,7 @@ import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
-import { lookupFoods } from './rag'
+import { lookupFoods } from './rag.js'
 
 // ══════════════════════════════════════════════════════════════
 // 切换 AI 只需改下面这一行 MODEL（对应的 key 放到 .env.local / Vercel 环境变量）：

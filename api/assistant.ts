@@ -10,7 +10,7 @@ export default async function handler(req: any, res: any) {
   }
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-    const { assistantChat } = await import('./lib/assistant')
+    const { assistantChat } = await import('./lib/assistant.js')
     const result = await assistantChat(body)
     res.status(200).json(result)
   } catch (e) {
