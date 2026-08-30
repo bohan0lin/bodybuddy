@@ -6,7 +6,7 @@ import { dateOffset, formatDateShort, macrosByDate, sumMacros, todayStr, weekday
 import { useT } from '../lib/i18n'
 import ProgressRing from '../components/ProgressRing'
 import MacroBar from '../components/MacroBar'
-import DayRings from '../components/DayRings'
+import CalorieRing from '../components/CalorieRing'
 
 export default function Today() {
   const { meals, profile, latestWeight, prevWeight, weightLogs } = useStore()
@@ -18,7 +18,6 @@ export default function Today() {
   const totals = useMemo(() => sumMacros(todayMeals), [todayMeals])
   const byDate = useMemo(() => macrosByDate(meals), [meals])
 
-  const targets = { protein: profile.targetProtein, carbs: profile.targetCarbs, fat: profile.targetFat }
   const weekdayLetters = lang === 'zh' ? ['日', '一', '二', '三', '四', '五', '六'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
   const week = useMemo(
     () =>
@@ -75,7 +74,7 @@ export default function Today() {
           {week.map((d) => (
             <button key={d.date} onClick={() => navigate('/day/' + d.date, { state: { back: '/' } })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1 }}>
               <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: d.isToday ? 'var(--accent)' : 'var(--text-muted)' }}>{d.wd}</span>
-              <DayRings protein={d.m.protein} carbs={d.m.carbs} fat={d.m.fat} targets={targets} size={36} stroke={3} />
+              <CalorieRing calories={d.m.calories} target={profile.targetCalories} size={36} stroke={3.4} />
             </button>
           ))}
         </div>
