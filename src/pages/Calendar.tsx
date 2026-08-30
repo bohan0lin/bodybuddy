@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { macrosByDate, todayStr } from '../lib/nutrition'
 import { useT } from '../lib/i18n'
@@ -13,6 +13,9 @@ export default function Calendar() {
   const { meals, profile } = useStore()
   const { t, lang } = useT()
   const navigate = useNavigate()
+  const location = useLocation()
+  const back = (location.state as { back?: string } | null)?.back ?? '/'
+  const backLabel = back === '/settings' ? t('common.backMe') : t('common.backToday')
   const today = todayStr()
   const byDate = useMemo(() => macrosByDate(meals), [meals])
 
@@ -36,8 +39,8 @@ export default function Calendar() {
 
   return (
     <div className="page">
-      <button className="btn-ghost" onClick={() => navigate('/')} style={{ padding: 0, marginBottom: 18, fontSize: 14, color: 'var(--text-dim)' }}>
-        {t('common.backToday')}
+      <button className="btn-ghost" onClick={() => navigate(back)} style={{ padding: 0, marginBottom: 18, fontSize: 14, color: 'var(--text-dim)' }}>
+        {backLabel}
       </button>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>

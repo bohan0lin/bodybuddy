@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   CartesianGrid,
   Line,
@@ -16,7 +16,10 @@ import { useT } from '../lib/i18n'
 export default function Body() {
   const { weightLogs, upsertWeight, latestWeight } = useStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useT()
+  const back = (location.state as { back?: string } | null)?.back ?? '/'
+  const backLabel = back === '/settings' ? t('common.backMe') : t('common.backToday')
   const [date, setDate] = useState(todayStr())
   const [weight, setWeight] = useState('')
   const [bodyFat, setBodyFat] = useState('')
@@ -41,10 +44,10 @@ export default function Body() {
     <div className="page">
       <button
         className="btn-ghost"
-        onClick={() => navigate('/')}
+        onClick={() => navigate(back)}
         style={{ padding: 0, marginBottom: 22, fontSize: 14, color: 'var(--text-dim)' }}
       >
-        {t('common.backToday')}
+        {backLabel}
       </button>
 
       {/* 概览 */}
