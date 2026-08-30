@@ -93,21 +93,21 @@ export default function Settings() {
               <span>{t('settings.energy')}</span>
               <EnergyToggle />
             </label>
-            <input type="number" inputMode="decimal" value={toEnergy(form.targetCalories)} onChange={(e) => setCalories(e.target.value)} />
+            <input type="number" inputMode="decimal" placeholder="0" value={form.targetCalories ? toEnergy(form.targetCalories) : ''} onChange={(e) => setCalories(e.target.value)} />
           </div>
           <div className="field">
             <label>{t('log.proteinG')}</label>
-            <input type="number" inputMode="decimal" value={form.targetProtein} onChange={(e) => set('targetProtein', e.target.value)} />
+            <input type="number" inputMode="decimal" placeholder="0" value={form.targetProtein || ''} onChange={(e) => set('targetProtein', e.target.value)} />
           </div>
         </div>
         <div className="row">
           <div className="field">
             <label>{t('log.carbsG')}</label>
-            <input type="number" inputMode="decimal" value={form.targetCarbs} onChange={(e) => set('targetCarbs', e.target.value)} />
+            <input type="number" inputMode="decimal" placeholder="0" value={form.targetCarbs || ''} onChange={(e) => set('targetCarbs', e.target.value)} />
           </div>
           <div className="field">
             <label>{t('log.fatG')}</label>
-            <input type="number" inputMode="decimal" value={form.targetFat} onChange={(e) => set('targetFat', e.target.value)} />
+            <input type="number" inputMode="decimal" placeholder="0" value={form.targetFat || ''} onChange={(e) => set('targetFat', e.target.value)} />
           </div>
         </div>
         <button className="btn btn-primary btn-block" onClick={handleSave}>
