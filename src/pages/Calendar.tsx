@@ -4,13 +4,14 @@ import { useStore } from '../data/store'
 import { macrosByDate, todayStr } from '../lib/nutrition'
 import { useT } from '../lib/i18n'
 import CalorieRing from '../components/CalorieRing'
+import WorkoutDot from '../components/WorkoutDot'
 
 function ymd(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
 export default function Calendar() {
-  const { meals, profile } = useStore()
+  const { meals, profile, workouts } = useStore()
   const { t, lang } = useT()
   const navigate = useNavigate()
   const location = useLocation()
@@ -18,6 +19,7 @@ export default function Calendar() {
   const backLabel = back === '/settings' ? t('common.backMe') : t('common.backToday')
   const today = todayStr()
   const byDate = useMemo(() => macrosByDate(meals), [meals])
+  const workoutDates = useMemo(() => new Set(workouts.map((w) => w.date)), [workouts])
 
   const now = new Date()
   const [cursor, setCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1))
@@ -70,6 +72,7 @@ export default function Calendar() {
               <span style={{ opacity: isFuture ? 0.4 : 1 }}>
                 <CalorieRing calories={m.calories} target={profile.targetCalories} size={30} stroke={2.6} />
               </span>
+              <span style={{ height: 11, display: 'flex', alignItems: 'center' }}>{workoutDates.has(date) && <WorkoutDot size={11} />}</span>
             </button>
           )
         })}

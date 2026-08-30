@@ -14,6 +14,7 @@ import Calendar from './pages/Calendar'
 import Day from './pages/Day'
 import Coach from './pages/Coach'
 import Knowledge from './pages/Knowledge'
+import LogWorkout from './pages/LogWorkout'
 import SettingsTargets from './pages/SettingsTargets'
 import SettingsProfile from './pages/SettingsProfile'
 import SettingsLanguage from './pages/SettingsLanguage'
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/day/:date" element={<Day />} />
           <Route path="/ai" element={<AISuggest />} />
           <Route path="/log" element={<LogMeal />} />
+          <Route path="/workout" element={<LogWorkout />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/targets" element={<SettingsTargets />} />
           <Route path="/settings/profile" element={<SettingsProfile />} />

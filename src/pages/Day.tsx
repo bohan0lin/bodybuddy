@@ -8,7 +8,7 @@ import MacroBar from '../components/MacroBar'
 
 export default function Day() {
   const { date = '' } = useParams()
-  const { meals, profile, deleteMeal } = useStore()
+  const { meals, profile, deleteMeal, workouts, deleteWorkout } = useStore()
   const navigate = useNavigate()
   const location = useLocation()
   const { t, lang } = useT()
@@ -21,6 +21,10 @@ export default function Day() {
     [meals, date],
   )
   const totals = useMemo(() => sumMacros(dayMeals), [dayMeals])
+  const dayWorkouts = useMemo(
+    () => workouts.filter((w) => w.date === date).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    [workouts, date],
+  )
 
   const dateLabel = date
     ? new Date(date + 'T00:00:00').toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'long', day: 'numeric', weekday: 'long' })
@@ -85,6 +89,38 @@ export default function Day() {
               </button>
               <button className="btn-ghost" style={{ fontSize: 13, padding: '6px 8px', color: 'var(--accent)' }} onClick={() => goEdit(m)}>{t('log.edit')}</button>
               <button className="btn-ghost" aria-label="delete" style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteMeal(m.id)}>×</button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* 补记运动 */}
+      <button
+        className="btn btn-block"
+        style={{ marginBottom: 16 }}
+        onClick={() => navigate('/workout', { state: { logDate: date, returnTo: '/day/' + date } })}
+      >
+        {t('workout.add')}
+      </button>
+
+      {/* 当日运动（点可编辑） */}
+      <div className="card">
+        <p className="card-label">{t('workout.section')}</p>
+        {dayWorkouts.length === 0 ? (
+          <div className="empty">{t('workout.none')}</div>
+        ) : (
+          dayWorkouts.map((w) => (
+            <div key={w.id} className="list-row">
+              <button onClick={() => navigate('/workout', { state: { editWorkout: w, returnTo: '/day/' + date } })} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+                <div style={{ fontWeight: 500 }}>
+                  {t(('workout.type.' + w.type) as 'workout.type.strength')}
+                  {w.note && <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {w.note}</span>}
+                </div>
+                <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                  {w.durationMin} {t('workout.min')} · {Math.round(w.calories)} {kcalLabel}
+                </div>
+              </button>
+              <button className="btn-ghost" aria-label="delete" style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteWorkout(w.id)}>×</button>
             </div>
           ))
         )}

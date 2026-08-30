@@ -7,9 +7,10 @@ import { useT } from '../lib/i18n'
 import ProgressRing from '../components/ProgressRing'
 import MacroBar from '../components/MacroBar'
 import CalorieRing from '../components/CalorieRing'
+import WorkoutDot from '../components/WorkoutDot'
 
 export default function Today() {
-  const { meals, profile, latestWeight, prevWeight, weightLogs } = useStore()
+  const { meals, profile, latestWeight, prevWeight, weightLogs, workouts } = useStore()
   const navigate = useNavigate()
   const { t, lang } = useT()
   const today = todayStr()
@@ -17,6 +18,7 @@ export default function Today() {
   const todayMeals = useMemo(() => meals.filter((m) => m.date === today), [meals, today])
   const totals = useMemo(() => sumMacros(todayMeals), [todayMeals])
   const byDate = useMemo(() => macrosByDate(meals), [meals])
+  const workoutDates = useMemo(() => new Set(workouts.map((w) => w.date)), [workouts])
 
   const weekdayLetters = lang === 'zh' ? ['日', '一', '二', '三', '四', '五', '六'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
   const week = useMemo(
@@ -24,10 +26,10 @@ export default function Today() {
       Array.from({ length: 7 }, (_, i) => {
         const date = dateOffset(i - 6)
         const m = byDate.get(date) ?? { protein: 0, carbs: 0, fat: 0, calories: 0 }
-        return { date, m, isToday: date === today, wd: weekdayLetters[weekdayOf(date)] }
+        return { date, m, isToday: date === today, wd: weekdayLetters[weekdayOf(date)], hasWorkout: workoutDates.has(date) }
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, today, lang],
+    [byDate, today, lang, workoutDates],
   )
 
   const weightDelta =
@@ -75,6 +77,7 @@ export default function Today() {
             <button key={d.date} onClick={() => navigate('/day/' + d.date, { state: { back: '/' } })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1 }}>
               <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: d.isToday ? 'var(--accent)' : 'var(--text-muted)' }}>{d.wd}</span>
               <CalorieRing calories={d.m.calories} target={profile.targetCalories} size={36} stroke={3.4} />
+              <span style={{ height: 13, display: 'flex', alignItems: 'center' }}>{d.hasWorkout && <WorkoutDot size={13} />}</span>
             </button>
           ))}
         </div>

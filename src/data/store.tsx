@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { Meal, Profile, SavedItem, WeightLog } from '../types'
+import type { Meal, Profile, SavedItem, WeightLog, Workout } from '../types'
 import { estimateCalories } from '../lib/nutrition'
 import { supabase } from '../lib/supabase'
 
@@ -21,6 +21,7 @@ interface AppData {
   weightLogs: WeightLog[]
   meals: Meal[]
   savedItems: SavedItem[]
+  workouts: Workout[]
 }
 
 // ── 行 ⇄ 对象映射（数据库 snake_case ⇄ 前端 camelCase）──────────
@@ -55,6 +56,15 @@ const toSaved = (r: any): SavedItem => ({
   calories: Number(r.calories),
   note: r.note ?? undefined,
 })
+const toWorkout = (r: any): Workout => ({
+  id: r.id,
+  date: r.date,
+  type: r.type,
+  note: r.note ?? undefined,
+  durationMin: Number(r.duration_min),
+  calories: Number(r.calories),
+  createdAt: r.created_at,
+})
 const toProfile = (r: any): Profile => ({
   displayName: r.display_name,
   heightCm: Number(r.height_cm),
@@ -79,6 +89,9 @@ interface StoreValue extends AppData {
   addSavedItem: (s: Omit<SavedItem, 'id'>) => void
   updateSavedItem: (id: string, patch: Partial<Omit<SavedItem, 'id'>>) => void
   deleteSavedItem: (id: string) => void
+  addWorkout: (w: Omit<Workout, 'id' | 'createdAt'>) => void
+  updateWorkout: (id: string, patch: Partial<Omit<Workout, 'id' | 'createdAt'>>) => void
+  deleteWorkout: (id: string) => void
   latestWeight: WeightLog | undefined
   prevWeight: WeightLog | undefined
 }
@@ -91,6 +104,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     weightLogs: [],
     meals: [],
     savedItems: [],
+    workouts: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -99,11 +113,12 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     let alive = true
     ;(async () => {
       setLoading(true)
-      const [prof, weights, meals, saved] = await Promise.all([
+      const [prof, weights, meals, saved, workouts] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
         supabase.from('weight_logs').select('*').eq('user_id', userId),
         supabase.from('meals').select('*').eq('user_id', userId),
         supabase.from('saved_items').select('*').eq('user_id', userId),
+        supabase.from('workouts').select('*').eq('user_id', userId),
       ])
       if (!alive) return
 
@@ -121,6 +136,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
         savedItems: (saved.data ?? [])
           .map(toSaved)
           .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
+        workouts: (workouts.data ?? []).map(toWorkout),
       })
       setLoading(false)
     })()
@@ -280,6 +296,39 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       deleteSavedItem: (id) => {
         setData((d) => ({ ...d, savedItems: d.savedItems.filter((x) => x.id !== id) }))
         supabase.from('saved_items').delete().eq('id', id).then(({ error }) => error && console.error('deleteSaved', error))
+      },
+
+      addWorkout: (w) => {
+        const workout: Workout = { ...w, id: uid(), createdAt: new Date().toISOString() }
+        setData((d) => ({ ...d, workouts: [...d.workouts, workout] }))
+        supabase
+          .from('workouts')
+          .insert({
+            id: workout.id,
+            user_id: userId,
+            date: workout.date,
+            type: workout.type,
+            note: workout.note ?? null,
+            duration_min: workout.durationMin,
+            calories: workout.calories,
+          })
+          .then(({ error }) => error && console.error('addWorkout', error))
+      },
+
+      updateWorkout: (id, patch) => {
+        setData((d) => ({ ...d, workouts: d.workouts.map((x) => (x.id === id ? { ...x, ...patch } : x)) }))
+        const row: Record<string, unknown> = {}
+        if (patch.date !== undefined) row.date = patch.date
+        if (patch.type !== undefined) row.type = patch.type
+        if (patch.note !== undefined) row.note = patch.note || null
+        if (patch.durationMin !== undefined) row.duration_min = patch.durationMin
+        if (patch.calories !== undefined) row.calories = patch.calories
+        supabase.from('workouts').update(row).eq('id', id).then(({ error }) => error && console.error('updateWorkout', error))
+      },
+
+      deleteWorkout: (id) => {
+        setData((d) => ({ ...d, workouts: d.workouts.filter((x) => x.id !== id) }))
+        supabase.from('workouts').delete().eq('id', id).then(({ error }) => error && console.error('deleteWorkout', error))
       },
 
       latestWeight: sortedWeights[sortedWeights.length - 1],

@@ -44,6 +44,18 @@ create table if not exists public.meals (
   created_at timestamptz not null default now()
 );
 
+-- ── 运动记录 ────────────────────────────────────────────
+create table if not exists public.workouts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  date date not null,
+  type text not null,               -- 活动类型 key（strength/run/…）
+  note text,                        -- 备注（练了什么部位）
+  duration_min numeric not null default 0,
+  calories numeric not null default 0,   -- 估算消耗千卡
+  created_at timestamptz not null default now()
+);
+
 -- ── 常用食物 / 套餐库 ───────────────────────────────────
 create table if not exists public.saved_items (
   id uuid primary key default gen_random_uuid(),
@@ -63,12 +75,14 @@ create table if not exists public.saved_items (
 create index if not exists idx_weight_user on public.weight_logs (user_id, date);
 create index if not exists idx_meals_user on public.meals (user_id, date);
 create index if not exists idx_saved_user on public.saved_items (user_id);
+create index if not exists idx_workouts_user on public.workouts (user_id, date);
 
 -- ── 行级安全（RLS）：每人只能读写自己的数据 ──────────────
 alter table public.profiles enable row level security;
 alter table public.weight_logs enable row level security;
 alter table public.meals enable row level security;
 alter table public.saved_items enable row level security;
+alter table public.workouts enable row level security;
 
 drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles
@@ -84,6 +98,10 @@ create policy "own meals" on public.meals
 
 drop policy if exists "own saved" on public.saved_items;
 create policy "own saved" on public.saved_items
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own workouts" on public.workouts;
+create policy "own workouts" on public.workouts
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ── 注册时自动创建 profile 行 ───────────────────────────

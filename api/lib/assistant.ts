@@ -9,7 +9,9 @@ export interface AssistantContext {
   targets: Macros
   consumed: Macros
   todayMeals: { name: string; type: string }[]
+  todayWorkouts?: { type: string; note?: string; durationMin: number; calories: number }[]
   recentDays?: { date: string; calories: number; protein: number; carbs: number; fat: number }[]
+  recentWorkouts?: { date: string; type: string; durationMin: number; calories: number }[]
   savedItems: { kind: string; name: string; brand?: string; unit: string; baseAmount: number; protein: number; carbs: number; fat: number; calories: number }[]
   latestWeight?: { weight: number; bodyFat?: number }
   hour: number
@@ -22,7 +24,7 @@ export interface ClientMessage {
 }
 
 export interface AssistantAction {
-  type: 'log' | 'save'
+  type: 'log' | 'save' | 'workout'
   // log
   mealType?: string
   // save
@@ -36,6 +38,10 @@ export interface AssistantAction {
   carbs?: number
   fat?: number
   calories?: number
+  // workout
+  workoutType?: string
+  note?: string
+  durationMin?: number
 }
 
 function buildSystem(ctx: AssistantContext, isEn: boolean): string {
@@ -62,8 +68,11 @@ ${langRule}
 今天已摄入：热量 ${Math.round(ctx.consumed.calories)}、蛋白 ${Math.round(ctx.consumed.protein)}g、碳水 ${Math.round(ctx.consumed.carbs)}g、脂肪 ${Math.round(ctx.consumed.fat)}g
 今天还剩：热量 ${rem.calories}、蛋白 ${rem.protein}g、碳水 ${rem.carbs}g、脂肪 ${rem.fat}g
 今天已吃：${ctx.todayMeals.map((m) => m.name).join('、') || '还没吃'}
+今天运动：${(ctx.todayWorkouts ?? []).map((w) => `${w.type} ${w.durationMin}分钟 约${w.calories}千卡${w.note ? `(${w.note})` : ''}`).join('、') || '还没运动'}
 近 7 天摄入（日期: 热量/蛋白/碳水/脂肪）：
 ${(ctx.recentDays ?? []).map((d) => `${d.date}: ${d.calories}千卡 蛋${d.protein} 碳${d.carbs} 脂${d.fat}`).join('\n') || '无'}
+近 7 天运动：
+${(ctx.recentWorkouts ?? []).map((w) => `${w.date}: ${w.type} ${w.durationMin}分钟 约${w.calories}千卡`).join('\n') || '无'}
 最新体重：${ctx.latestWeight ? `${ctx.latestWeight.weight}kg${ctx.latestWeight.bodyFat != null ? ` 体脂${ctx.latestWeight.bodyFat}%` : ''}` : '未记录'}
 当前时间：${ctx.hour} 点
 常用清单：
@@ -74,6 +83,8 @@ ${saved || '（空）'}
 - 用户问"最近吃得怎么样/这几天/趋势"，用近 7 天摄入数据分析（是否达标、蛋白够不够、波动等），给简短点评+1 个改进建议。
 - 用户说"我吃了…帮我记录"或发来食物照片说吃了多少，就调用 logMeal 工具提出记账（估算营养、按分量换算；能称重的用 g）。可以参考常用清单里的数据。
 - 用户说"加到常用/收藏"，调用 saveFavorite 工具提出保存。
+- 用户说"今天练了…/我做了…运动"，就调用 logWorkout 工具提出记录（type 从给定类型里选，calories 用 MET×体重×时长 估算）。
+- 用户问训练与吃法的搭配（如碳循环、练腿日/大训练量日怎么吃），结合上面的运动数据与参考知识库作答。
 - 调用工具后，用一句话告诉用户"已为你准备好，请确认"。不要假装已经保存——真正保存需要用户点确认。
 - 营养数值用千卡；不确定就合理估算并说明是估算。`
 }
@@ -119,6 +130,19 @@ export async function assistantChat(input: {
       }),
       execute: async (a) => {
         actions.push({ type: 'save', ...a })
+        return { queued: true }
+      },
+    }),
+    logWorkout: tool({
+      description: '记录一次运动（提议，需用户确认后才保存）',
+      inputSchema: z.object({
+        type: z.enum(['strength', 'run', 'hiit', 'cycling', 'ball', 'swim', 'walk', 'yoga', 'other']),
+        note: z.string().optional(),
+        durationMin: z.number(),
+        calories: z.number(),
+      }),
+      execute: async (a) => {
+        actions.push({ type: 'workout', workoutType: a.type, note: a.note, durationMin: a.durationMin, calories: a.calories })
         return { queued: true }
       },
     }),

@@ -57,6 +57,17 @@ export interface Macros {
   calories: number
 }
 
+// 运动记录
+export interface Workout {
+  id: string
+  date: string // YYYY-MM-DD
+  type: string // 活动类型 key，见 lib/workout.ts
+  note?: string // 备注：练了什么部位
+  durationMin: number // 时长（分钟）
+  calories: number // 估算消耗千卡
+  createdAt: string // ISO
+}
+
 // 常用库：可快捷复用的食物 / 套餐
 export type SavedKind = 'food' | 'meal'
 

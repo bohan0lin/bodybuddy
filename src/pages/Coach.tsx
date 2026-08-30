@@ -7,7 +7,7 @@ import { useT } from '../lib/i18n'
 import type { MealType } from '../types'
 
 interface Action {
-  type: 'log' | 'save'
+  type: 'log' | 'save' | 'workout'
   mealType?: MealType
   kind?: 'food' | 'meal'
   name?: string
@@ -19,6 +19,9 @@ interface Action {
   carbs?: number
   fat?: number
   calories?: number
+  workoutType?: string
+  note?: string
+  durationMin?: number
 }
 
 interface Msg {
@@ -31,7 +34,7 @@ interface Msg {
 
 // AI 教练：整屏对话页（原悬浮助手改造而来）
 export default function Coach() {
-  const { profile, meals, savedItems, latestWeight, addMeal, addSavedItem } = useStore()
+  const { profile, meals, savedItems, latestWeight, workouts, addMeal, addSavedItem, addWorkout } = useStore()
   const { t, lang } = useT()
   const kcalLabel = t('today.kcal')
 
@@ -51,16 +54,26 @@ export default function Coach() {
       const mm = byDate.get(d) ?? { protein: 0, carbs: 0, fat: 0, calories: 0 }
       return { date: d, calories: Math.round(mm.calories), protein: Math.round(mm.protein), carbs: Math.round(mm.carbs), fat: Math.round(mm.fat) }
     })
+    const wkLabel = (k: string) => t(('workout.type.' + k) as 'workout.type.strength')
+    const since = dateOffset(-6)
+    const todayWorkouts = workouts.filter((w) => w.date === today).map((w) => ({ type: wkLabel(w.type), note: w.note, durationMin: w.durationMin, calories: w.calories }))
+    const recentWorkouts = workouts
+      .filter((w) => w.date >= since)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((w) => ({ date: w.date, type: wkLabel(w.type), durationMin: w.durationMin, calories: w.calories }))
     return {
       targets: { protein: profile.targetProtein, carbs: profile.targetCarbs, fat: profile.targetFat, calories: profile.targetCalories },
       consumed: sumMacros(todayMeals),
       todayMeals: todayMeals.map((m) => ({ name: m.name, type: m.type })),
+      todayWorkouts,
       recentDays,
+      recentWorkouts,
       savedItems: savedItems.map((s) => ({ kind: s.kind, name: s.name, brand: s.brand, unit: s.unit, baseAmount: s.baseAmount, protein: s.protein, carbs: s.carbs, fat: s.fat, calories: s.calories })),
       latestWeight: latestWeight ? { weight: latestWeight.weight, bodyFat: latestWeight.bodyFat } : undefined,
       hour: new Date().getHours(),
     }
-  }, [profile, meals, savedItems, latestWeight])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, meals, savedItems, latestWeight, workouts, lang])
 
   function scrollDown() {
     requestAnimationFrame(() => {
@@ -106,6 +119,8 @@ export default function Coach() {
     if (!a) return
     if (a.type === 'log') {
       addMeal({ date: todayStr(), type: (a.mealType ?? 'snack') as MealType, name: a.name ?? '', brand: a.brand || undefined, amount: a.amount, unit: a.unit ?? 'g', protein: a.protein ?? 0, carbs: a.carbs ?? 0, fat: a.fat ?? 0, calories: a.calories ?? 0 })
+    } else if (a.type === 'workout') {
+      addWorkout({ date: todayStr(), type: a.workoutType ?? 'other', note: a.note || undefined, durationMin: a.durationMin ?? 0, calories: a.calories ?? 0 })
     } else {
       addSavedItem({ kind: a.kind ?? 'food', name: a.name ?? '', brand: a.brand || undefined, unit: a.unit ?? 'g', baseAmount: a.baseAmount ?? 1, protein: a.protein ?? 0, carbs: a.carbs ?? 0, fat: a.fat ?? 0, calories: a.calories ?? 0 })
     }
@@ -138,15 +153,29 @@ export default function Coach() {
             )}
             {m.actions?.map((a, ai) => (
               <div key={ai} className="card" style={{ marginTop: 8, marginBottom: 0, width: '85%', padding: 16 }}>
-                <p className="card-label" style={{ marginBottom: 10 }}>{a.type === 'log' ? t('assistant.logAction') : t('assistant.saveAction')}</p>
-                <div style={{ fontWeight: 500 }}>
-                  {a.name}
-                  {a.brand ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {a.brand}</span> : null}
-                  {a.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.amount}{a.unit ?? ''}</span> : a.baseAmount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.baseAmount}{a.unit ?? ''}</span> : null}
-                </div>
-                <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                  {Math.round(a.calories ?? 0)} {kcalLabel} · {t('macro.protein')} {a.protein} {t('macro.carbs')} {a.carbs} {t('macro.fat')} {a.fat}
-                </div>
+                <p className="card-label" style={{ marginBottom: 10 }}>{a.type === 'log' ? t('assistant.logAction') : a.type === 'workout' ? t('workout.title') : t('assistant.saveAction')}</p>
+                {a.type === 'workout' ? (
+                  <>
+                    <div style={{ fontWeight: 500 }}>
+                      {t(('workout.type.' + a.workoutType) as 'workout.type.strength')}
+                      {a.note ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {a.note}</span> : null}
+                    </div>
+                    <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                      {a.durationMin} {t('workout.min')} · {Math.round(a.calories ?? 0)} {kcalLabel}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontWeight: 500 }}>
+                      {a.name}
+                      {a.brand ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {a.brand}</span> : null}
+                      {a.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.amount}{a.unit ?? ''}</span> : a.baseAmount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.baseAmount}{a.unit ?? ''}</span> : null}
+                    </div>
+                    <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                      {Math.round(a.calories ?? 0)} {kcalLabel} · {t('macro.protein')} {a.protein} {t('macro.carbs')} {a.carbs} {t('macro.fat')} {a.fat}
+                    </div>
+                  </>
+                )}
                 {m.done?.[ai] ? (
                   <p style={{ color: 'var(--accent)', fontSize: 13, marginTop: 12, marginBottom: 0 }}>{t('assistant.done')}</p>
                 ) : (
