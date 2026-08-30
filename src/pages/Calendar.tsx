@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { macrosByDate, todayStr } from '../lib/nutrition'
 import { useT } from '../lib/i18n'
-import DayRings from '../components/DayRings'
+import CalorieRing from '../components/CalorieRing'
 
 function ymd(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -15,7 +15,6 @@ export default function Calendar() {
   const navigate = useNavigate()
   const today = todayStr()
   const byDate = useMemo(() => macrosByDate(meals), [meals])
-  const targets = { protein: profile.targetProtein, carbs: profile.targetCarbs, fat: profile.targetFat }
 
   const now = new Date()
   const [cursor, setCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1))
@@ -65,24 +64,18 @@ export default function Calendar() {
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '6px 0', borderRadius: 10, background: isToday ? 'var(--accent-dim)' : 'transparent', cursor: isFuture ? 'default' : 'pointer' }}
             >
               <span className="num" style={{ fontSize: 12, color: isToday ? 'var(--accent)' : isFuture ? 'var(--text-muted)' : 'var(--text)', fontWeight: isToday ? 600 : 400 }}>{d}</span>
-              <DayRings protein={m.protein} carbs={m.carbs} fat={m.fat} targets={targets} size={30} stroke={2.6} dim={isFuture} />
+              <span style={{ opacity: isFuture ? 0.4 : 1 }}>
+                <CalorieRing calories={m.calories} target={profile.targetCalories} size={30} stroke={2.6} />
+              </span>
             </button>
           )
         })}
       </div>
 
-      {/* 图例 */}
-      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 22 }}>
-        {[
-          { c: 'var(--protein)', l: t('macro.protein') },
-          { c: 'var(--carbs)', l: t('macro.carbs') },
-          { c: 'var(--fat)', l: t('macro.fat') },
-        ].map((x) => (
-          <span key={x.l} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: x.c }} />{x.l}
-          </span>
-        ))}
-      </div>
+      {/* 说明：环 = 当日卡路里达成，满圈后越深表示超得越多 */}
+      <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 22, lineHeight: 1.6 }}>
+        {lang === 'zh' ? '环 = 当日卡路里达成，满圈后越深表示超得越多' : 'Ring = daily calories; darker past full means further over'}
+      </p>
     </div>
   )
 }

@@ -71,3 +71,38 @@ export async function lookupFoods(names: string[]): Promise<(FoodMatch | null)[]
     return empty
   }
 }
+
+// ── 文本知识库检索（健身/营养方法论）────────────────────────────
+export interface KnowledgePassage {
+  title: string
+  content: string
+  tags: string | null
+  distance: number
+}
+
+// 问题→段落的距离普遍比「食物名→食物名」大，阈值放宽些
+const KB_THRESHOLD = 0.6
+
+// 按查询检索最相关的知识段落；异常/未配置/无命中都返回空数组（调用方直接忽略）
+export async function lookupKnowledge(query: string, k = 4): Promise<KnowledgePassage[]> {
+  const q = (query || '').trim()
+  const sb = getClient()
+  if (!q || !sb) return []
+
+  try {
+    const { embeddings } = await embedMany({
+      model: google.textEmbedding('gemini-embedding-001'),
+      values: [q],
+      providerOptions: { google: { outputDimensionality: 768, taskType: 'RETRIEVAL_QUERY' } },
+    })
+    const { data, error } = await sb.rpc('match_knowledge', { query_embedding: embeddings[0], match_count: k })
+    if (error || !data) return []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any[])
+      .filter((m) => Number(m.distance) <= KB_THRESHOLD)
+      .map((m) => ({ title: m.title, content: m.content, tags: m.tags ?? null, distance: Number(m.distance) }))
+  } catch (e) {
+    console.error('lookupKnowledge failed', e)
+    return []
+  }
+}
