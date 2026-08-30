@@ -325,9 +325,9 @@ a {
   -webkit-backdrop-filter: saturate(140%) blur(20px);
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: repeat(2, 1fr) auto repeat(2, 1fr);
   align-items: center;
-  padding: 12px 24px calc(14px + env(safe-area-inset-bottom));
+  padding: 12px 12px calc(14px + env(safe-area-inset-bottom));
   z-index: 50;
 }
 
@@ -350,6 +350,13 @@ a {
 .nav-item .nav-icon {
   font-size: 20px;
   line-height: 1;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-item .nav-icon svg {
+  display: block;
 }
 
 .nav-fab {

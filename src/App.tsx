@@ -3,7 +3,6 @@ import { isConfigured } from './lib/supabase'
 import { useAuth } from './data/auth'
 import { StoreProvider } from './data/store'
 import BottomNav from './components/BottomNav'
-import Assistant from './components/Assistant'
 import Today from './pages/Today'
 import Body from './pages/Body'
 import LogMeal from './pages/LogMeal'
@@ -13,6 +12,8 @@ import AISuggest from './pages/AISuggest'
 import History from './pages/History'
 import Calendar from './pages/Calendar'
 import Day from './pages/Day'
+import Coach from './pages/Coach'
+import Knowledge from './pages/Knowledge'
 
 function Splash({ text }: { text: string }) {
   return (
@@ -64,8 +65,9 @@ export default function App() {
           <Route path="/ai" element={<AISuggest />} />
           <Route path="/log" element={<LogMeal />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/coach" element={<Coach />} />
+          <Route path="/knowledge" element={<Knowledge />} />
         </Routes>
-        <Assistant />
         <BottomNav />
       </div>
     </StoreProvider>
