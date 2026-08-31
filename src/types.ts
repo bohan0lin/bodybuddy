@@ -57,6 +57,15 @@ export interface Macros {
   calories: number
 }
 
+// 知识库条目（每人一份，AI 整理后的健身/营养知识）
+export interface KnowledgeItem {
+  id: string
+  title: string
+  content: string
+  tags?: string
+  createdAt?: string
+}
+
 // 运动记录
 export interface Workout {
   id: string

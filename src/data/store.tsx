@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { Meal, Profile, SavedItem, WeightLog, Workout } from '../types'
+import type { KnowledgeItem, Meal, Profile, SavedItem, WeightLog, Workout } from '../types'
 import { estimateCalories } from '../lib/nutrition'
 import { supabase } from '../lib/supabase'
 
@@ -22,6 +22,7 @@ interface AppData {
   meals: Meal[]
   savedItems: SavedItem[]
   workouts: Workout[]
+  knowledgeItems: KnowledgeItem[]
 }
 
 // ── 行 ⇄ 对象映射（数据库 snake_case ⇄ 前端 camelCase）──────────
@@ -65,6 +66,13 @@ const toWorkout = (r: any): Workout => ({
   calories: Number(r.calories),
   createdAt: r.created_at,
 })
+const toKnowledge = (r: any): KnowledgeItem => ({
+  id: r.id,
+  title: r.title,
+  content: r.content,
+  tags: r.tags ?? undefined,
+  createdAt: r.created_at ?? undefined,
+})
 const toProfile = (r: any): Profile => ({
   displayName: r.display_name,
   heightCm: Number(r.height_cm),
@@ -92,6 +100,8 @@ interface StoreValue extends AppData {
   addWorkout: (w: Omit<Workout, 'id' | 'createdAt'>) => void
   updateWorkout: (id: string, patch: Partial<Omit<Workout, 'id' | 'createdAt'>>) => void
   deleteWorkout: (id: string) => void
+  addKnowledge: (k: { title: string; content: string; tags?: string }) => void
+  deleteKnowledge: (id: string) => void
   latestWeight: WeightLog | undefined
   prevWeight: WeightLog | undefined
 }
@@ -105,6 +115,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     meals: [],
     savedItems: [],
     workouts: [],
+    knowledgeItems: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -113,12 +124,13 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     let alive = true
     ;(async () => {
       setLoading(true)
-      const [prof, weights, meals, saved, workouts] = await Promise.all([
+      const [prof, weights, meals, saved, workouts, knowledge] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
         supabase.from('weight_logs').select('*').eq('user_id', userId),
         supabase.from('meals').select('*').eq('user_id', userId),
         supabase.from('saved_items').select('*').eq('user_id', userId),
         supabase.from('workouts').select('*').eq('user_id', userId),
+        supabase.from('knowledge').select('*').eq('user_id', userId),
       ])
       if (!alive) return
 
@@ -137,6 +149,9 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
           .map(toSaved)
           .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
         workouts: (workouts.data ?? []).map(toWorkout),
+        knowledgeItems: (knowledge.data ?? [])
+          .map(toKnowledge)
+          .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
       })
       setLoading(false)
     })()
@@ -329,6 +344,35 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       deleteWorkout: (id) => {
         setData((d) => ({ ...d, workouts: d.workouts.filter((x) => x.id !== id) }))
         supabase.from('workouts').delete().eq('id', id).then(({ error }) => error && console.error('deleteWorkout', error))
+      },
+
+      addKnowledge: (k) => {
+        setData((d) => {
+          // 同标题视为同一条 → 更新；否则新增
+          const idx = d.knowledgeItems.findIndex((x) => x.title === k.title)
+          if (idx >= 0) {
+            const existing = d.knowledgeItems[idx]
+            const next = [...d.knowledgeItems]
+            next[idx] = { ...existing, content: k.content, tags: k.tags }
+            supabase
+              .from('knowledge')
+              .update({ content: k.content, tags: k.tags ?? null })
+              .eq('id', existing.id)
+              .then(({ error }) => error && console.error('updateKnowledge', error))
+            return { ...d, knowledgeItems: next }
+          }
+          const item: KnowledgeItem = { id: uid(), title: k.title, content: k.content, tags: k.tags, createdAt: new Date().toISOString() }
+          supabase
+            .from('knowledge')
+            .insert({ id: item.id, user_id: userId, title: item.title, content: item.content, tags: item.tags ?? null })
+            .then(({ error }) => error && console.error('addKnowledge', error))
+          return { ...d, knowledgeItems: [item, ...d.knowledgeItems] }
+        })
+      },
+
+      deleteKnowledge: (id) => {
+        setData((d) => ({ ...d, knowledgeItems: d.knowledgeItems.filter((x) => x.id !== id) }))
+        supabase.from('knowledge').delete().eq('id', id).then(({ error }) => error && console.error('deleteKnowledge', error))
       },
 
       latestWeight: sortedWeights[sortedWeights.length - 1],

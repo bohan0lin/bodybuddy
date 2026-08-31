@@ -34,7 +34,7 @@ interface Msg {
 
 // AI 教练：整屏对话页（原悬浮助手改造而来）
 export default function Coach() {
-  const { profile, meals, savedItems, latestWeight, workouts, addMeal, addSavedItem, addWorkout } = useStore()
+  const { profile, meals, savedItems, latestWeight, workouts, knowledgeItems, addMeal, addSavedItem, addWorkout } = useStore()
   const { t, lang } = useT()
   const kcalLabel = t('today.kcal')
 
@@ -69,11 +69,12 @@ export default function Coach() {
       recentDays,
       recentWorkouts,
       savedItems: savedItems.map((s) => ({ kind: s.kind, name: s.name, brand: s.brand, unit: s.unit, baseAmount: s.baseAmount, protein: s.protein, carbs: s.carbs, fat: s.fat, calories: s.calories })),
+      knowledge: knowledgeItems.map((k) => ({ title: k.title, content: k.content, tags: k.tags })),
       latestWeight: latestWeight ? { weight: latestWeight.weight, bodyFat: latestWeight.bodyFat } : undefined,
       hour: new Date().getHours(),
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, meals, savedItems, latestWeight, workouts, lang])
+  }, [profile, meals, savedItems, latestWeight, workouts, knowledgeItems, lang])
 
   function scrollDown() {
     requestAnimationFrame(() => {

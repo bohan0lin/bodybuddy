@@ -1,7 +1,6 @@
 import { generateText, tool, stepCountIs } from 'ai'
 import { z } from 'zod'
 import { MODEL } from './ai.js'
-import { lookupKnowledge } from './rag.js'
 
 type Macros = { protein: number; carbs: number; fat: number; calories: number }
 
@@ -13,6 +12,7 @@ export interface AssistantContext {
   recentDays?: { date: string; calories: number; protein: number; carbs: number; fat: number }[]
   recentWorkouts?: { date: string; type: string; durationMin: number; calories: number }[]
   savedItems: { kind: string; name: string; brand?: string; unit: string; baseAmount: number; protein: number; carbs: number; fat: number; calories: number }[]
+  knowledge?: { title: string; content: string; tags?: string }[]
   latestWeight?: { weight: number; bodyFat?: number }
   hour: number
 }
@@ -150,14 +150,11 @@ export async function assistantChat(input: {
 
   let system = buildSystem(input.context, input.lang === 'en')
 
-  // RAG：用最后一条用户消息检索知识库，命中则作为专业依据注入
-  const lastUser = [...input.messages].reverse().find((m) => m.role === 'user')
-  if (lastUser?.text) {
-    const passages = await lookupKnowledge(lastUser.text, 4)
-    if (passages.length) {
-      const kb = passages.map((p) => `【${p.title}】\n${p.content}`).join('\n\n')
-      system += `\n\n【参考知识库】以下是你作为教练掌握的专业知识。回答健身/营养的方法论问题时，优先依据这些内容，并结合上面这位用户的真实数据给出建议；若与当前问题无关则忽略，不要生搬硬套：\n${kb}`
-    }
+  // 用户自建知识库（整库注入，条目少）作为专业依据
+  const kbItems = input.context.knowledge ?? []
+  if (kbItems.length) {
+    const kb = kbItems.map((p) => `【${p.title}】${p.content}`).join('\n')
+    system += `\n\n【用户的知识库】以下是这位用户自己收藏的健身/营养知识。回答方法论问题时优先依据这些内容，并结合他的真实数据给建议；与当前问题无关就忽略：\n${kb}`
   }
 
   /* eslint-disable @typescript-eslint/no-explicit-any */

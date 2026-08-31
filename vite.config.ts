@@ -30,6 +30,9 @@ function apiDevPlugin(): Plugin {
           } else if (url.startsWith('/api/assistant')) {
             const mod = await server.ssrLoadModule('/api/lib/assistant.ts')
             result = await mod.assistantChat(body)
+          } else if (url.startsWith('/api/knowledge')) {
+            const mod = await server.ssrLoadModule('/api/lib/knowledge.ts')
+            result = await mod.tidyKnowledge(body.text, body.lang)
           } else return next()
 
           res.setHeader('content-type', 'application/json')
