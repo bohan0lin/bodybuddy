@@ -1,0 +1,32 @@
+name: AI evals
+
+# 仅在 PR 改动了 AI 相关文件时跑，或手动触发（控制烧 token 频率）
+# 结果低于阈值会让本 job 显示红，但只要不把它设为「必需检查」就不会阻止合并（仅提醒）
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'evals/**'
+      - 'supabase/rag.sql'
+      - 'scripts/foods.json'
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run AI evals (lookup + assistant)
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run eval
