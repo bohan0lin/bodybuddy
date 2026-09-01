@@ -91,8 +91,8 @@ export default function Coach() {
     setImage(`data:${mediaType};base64,${data}`)
   }
 
-  async function send() {
-    const text = input.trim()
+  async function send(preset?: string) {
+    const text = (preset ?? input).trim()
     if ((!text && !image) || loading) return
     const userMsg: Msg = { role: 'user', text: text || (lang === 'zh' ? '这张图' : 'this photo'), image: image ?? undefined }
     const history = [...messages, userMsg]
@@ -142,7 +142,21 @@ export default function Coach() {
       {/* messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '18px 16px' }}>
         {messages.length === 0 && (
-          <p className="muted" style={{ fontSize: 14, lineHeight: 1.7, textAlign: 'center', padding: '20px 10px' }}>{t('assistant.greeting')}</p>
+          <div style={{ padding: '20px 6px' }}>
+            <p className="muted" style={{ fontSize: 14, lineHeight: 1.7, textAlign: 'center', margin: '0 0 20px' }}>{t('assistant.greeting')}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[t('coach.ex.plan'), t('coach.ex.review'), t('coach.ex.eat')].map((ex) => (
+                <button
+                  key={ex}
+                  onClick={() => send(ex)}
+                  style={{ textAlign: 'left', padding: '12px 15px', borderRadius: 14, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--text-dim)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  <span style={{ color: 'var(--accent)' }}>✦</span>
+                  {ex}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {messages.map((m, mi) => (
           <div key={mi} style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
@@ -216,7 +230,7 @@ export default function Coach() {
             placeholder={t('assistant.placeholder')}
             style={{ flex: 1, padding: '11px 14px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 999, color: 'var(--text)', outline: 'none' }}
           />
-          <button className="btn btn-accent" style={{ padding: '11px 16px' }} onClick={send} disabled={loading || (!input.trim() && !image)}>↑</button>
+          <button className="btn btn-accent" style={{ padding: '11px 16px' }} onClick={() => send()} disabled={loading || (!input.trim() && !image)}>↑</button>
         </div>
       </div>
     </div>

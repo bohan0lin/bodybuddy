@@ -61,6 +61,7 @@ export default function Knowledge() {
           rows={3}
           style={{ width: '100%', resize: 'none', padding: '12px 14px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 12, color: 'var(--text)', fontSize: 15, lineHeight: 1.6, outline: 'none', fontFamily: 'inherit' }}
         />
+        <p className="muted" style={{ fontSize: 12, margin: '8px 2px 0' }}>{t('knowledge.voiceHint')}</p>
         {!draft && (
           <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={tidy} disabled={loading || !text.trim()}>
             {loading ? t('knowledge.tidying') : t('knowledge.tidy')}

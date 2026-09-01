@@ -8,7 +8,6 @@ import Body from './pages/Body'
 import LogMeal from './pages/LogMeal'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
-import AISuggest from './pages/AISuggest'
 import History from './pages/History'
 import Calendar from './pages/Calendar'
 import Day from './pages/Day'
@@ -68,7 +67,6 @@ export default function App() {
           <Route path="/history" element={<History />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/day/:date" element={<Day />} />
-          <Route path="/ai" element={<AISuggest />} />
           <Route path="/log" element={<LogMeal />} />
           <Route path="/workout" element={<LogWorkout />} />
           <Route path="/settings" element={<Settings />} />

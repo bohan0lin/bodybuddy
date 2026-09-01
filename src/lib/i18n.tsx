@@ -25,6 +25,11 @@ const zh: Dict = {
   'knowledge.myKnowledge': '我的知识',
   'knowledge.empty': '还没有知识，在上面说一条吧。',
   'knowledge.failed': '整理失败：{msg}',
+  'knowledge.voiceHint': '想用说的？点输入框，用键盘上的 🎤 口述即可。',
+  // coach 快捷示例
+  'coach.ex.plan': '帮我安排今日剩余的饮食计划',
+  'coach.ex.review': '看看我最近吃得怎么样',
+  'coach.ex.eat': '根据剩余额度，我还能吃点什么',
   // common
   'common.backToday': '‹ 今日',
   'common.backTrend': '‹ 体重趋势',
@@ -235,6 +240,10 @@ const en: Dict = {
   'knowledge.myKnowledge': 'My knowledge',
   'knowledge.empty': 'No knowledge yet — add one above.',
   'knowledge.failed': 'Tidy failed: {msg}',
+  'knowledge.voiceHint': 'Prefer speaking? Tap the box and use your keyboard mic 🎤.',
+  'coach.ex.plan': 'Plan my remaining meals for today',
+  'coach.ex.review': 'How has my eating been lately?',
+  'coach.ex.eat': 'What else can I eat with my remaining budget?',
   'common.backToday': '‹ Today',
   'common.backTrend': '‹ Weight trend',
   'common.backCalendar': '‹ Calendar',
