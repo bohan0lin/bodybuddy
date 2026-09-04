@@ -80,6 +80,7 @@ const toProfile = (r: any): Profile => ({
   targetCarbs: Number(r.target_carbs),
   targetFat: Number(r.target_fat),
   targetCalories: Number(r.target_calories),
+  goalType: r.goal_type ?? undefined,
 })
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -238,6 +239,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
         if (p.targetCarbs !== undefined) patch.target_carbs = p.targetCarbs
         if (p.targetFat !== undefined) patch.target_fat = p.targetFat
         if (p.targetCalories !== undefined) patch.target_calories = p.targetCalories
+        if (p.goalType !== undefined) patch.goal_type = p.goalType
         supabase.from('profiles').update(patch).eq('id', userId).then(({ error }) => error && console.error('updateProfile', error))
       },
 

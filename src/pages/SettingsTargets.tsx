@@ -5,6 +5,7 @@ import { useT } from '../lib/i18n'
 import { usePrefs } from '../lib/prefs'
 import SubHeader from '../components/SubHeader'
 import EnergyToggle from '../components/EnergyToggle'
+import { GOAL_TYPES } from '../types'
 
 export default function SettingsTargets() {
   const { profile, updateProfile } = useStore()
@@ -27,6 +28,23 @@ export default function SettingsTargets() {
   return (
     <div className="page">
       <SubHeader title={t('settings.dailyTargets')} />
+      <div className="card">
+        <p className="card-label" style={{ marginBottom: 14 }}>{t('me.chooseGoal')}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {GOAL_TYPES.map((g) => (
+            <button
+              key={g}
+              type="button"
+              className={'chip' + (form.goalType === g ? ' active' : '')}
+              style={{ justifyContent: 'center', borderRadius: 14, padding: '12px 8px' }}
+              aria-pressed={form.goalType === g}
+              onClick={() => setForm((f) => ({ ...f, goalType: g }))}
+            >
+              {t(('me.goal.' + g) as 'me.goal.recomposition')}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="card">
         <div className="row">
           <div className="field">

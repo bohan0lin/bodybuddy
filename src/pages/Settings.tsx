@@ -57,8 +57,7 @@ export default function Settings() {
         onSettings={() => setSheetOpen(true)}
       />
 
-      {/* goalType 在后续「可选目标类型」迁移中接入；当前退化为「每日目标」并突出真实数值 */}
-      <GoalHero goalType={undefined} targets={targets} onEdit={() => navigate('/settings/targets')} />
+      <GoalHero goalType={profile.goalType} targets={targets} onEdit={() => navigate('/settings/targets')} />
 
       <BodyMetricGrid
         heightCm={profile.heightCm}

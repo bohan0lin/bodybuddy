@@ -18,6 +18,10 @@ export const MEAL_EMOJI: Record<MealType, string> = {
   snack: '🍎',
 }
 
+export type GoalType = 'recomposition' | 'fat_loss' | 'muscle_gain' | 'maintenance' | 'performance'
+
+export const GOAL_TYPES: GoalType[] = ['recomposition', 'fat_loss', 'muscle_gain', 'maintenance', 'performance']
+
 export interface Profile {
   displayName: string
   heightCm: number
@@ -25,6 +29,7 @@ export interface Profile {
   targetCarbs: number // g
   targetFat: number // g
   targetCalories: number // kcal
+  goalType?: GoalType // 可选：健康目标类别（不影响数值目标）
 }
 
 export interface WeightLog {

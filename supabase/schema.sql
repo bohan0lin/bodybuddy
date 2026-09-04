@@ -13,6 +13,7 @@ create table if not exists public.profiles (
   target_carbs numeric not null default 0,
   target_fat numeric not null default 0,
   target_calories numeric not null default 0,
+  goal_type text,                  -- 可选健康目标类别（recomposition/fat_loss/muscle_gain/maintenance/performance）
   created_at timestamptz not null default now()
 );
 
