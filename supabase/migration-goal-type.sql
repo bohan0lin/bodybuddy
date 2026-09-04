@@ -6,3 +6,13 @@
 
 alter table public.profiles
   add column if not exists goal_type text;
+
+-- 只允许固定取值或 null（幂等添加约束）
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_goal_type_check') then
+    alter table public.profiles
+      add constraint profiles_goal_type_check
+      check (goal_type in ('recomposition', 'fat_loss', 'muscle_gain', 'maintenance', 'performance'));
+  end if;
+end $$;

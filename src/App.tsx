@@ -1,7 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { isConfigured } from './lib/supabase'
 import { useAuth } from './data/auth'
-import { StoreProvider } from './data/store'
+import { StoreProvider, useStore } from './data/store'
 import BottomNav from './components/BottomNav'
 import Today from './pages/Today'
 import Body from './pages/Body'
@@ -48,6 +48,32 @@ VITE_SUPABASE_ANON_KEY=eyJhbGci...`}
   )
 }
 
+// 数据水合完成前不渲染受保护路由，避免表单从 DEFAULT_PROFILE(全 0) 初始化后覆盖真实数据
+function AuthedApp() {
+  const { loading } = useStore()
+  if (loading) return <Splash text="BodyBuddy" />
+  return (
+    <div className="app-shell">
+      <div className="app-glow" aria-hidden="true" />
+      <Routes>
+        <Route path="/" element={<Today />} />
+        <Route path="/body" element={<Body />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/calendar" element={<Calendar />} />
+        <Route path="/day/:date" element={<Day />} />
+        <Route path="/log" element={<LogMeal />} />
+        <Route path="/workout" element={<LogWorkout />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/settings/targets" element={<SettingsTargets />} />
+        <Route path="/settings/profile" element={<SettingsProfile />} />
+        <Route path="/coach" element={<Coach />} />
+        <Route path="/knowledge" element={<Knowledge />} />
+      </Routes>
+      <BottomNav />
+    </div>
+  )
+}
+
 export default function App() {
   const { session, loading } = useAuth()
 
@@ -57,24 +83,7 @@ export default function App() {
 
   return (
     <StoreProvider userId={session.user.id}>
-      <div className="app-shell">
-        <div className="app-glow" aria-hidden="true" />
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/body" element={<Body />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/day/:date" element={<Day />} />
-          <Route path="/log" element={<LogMeal />} />
-          <Route path="/workout" element={<LogWorkout />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/settings/targets" element={<SettingsTargets />} />
-          <Route path="/settings/profile" element={<SettingsProfile />} />
-          <Route path="/coach" element={<Coach />} />
-          <Route path="/knowledge" element={<Knowledge />} />
-        </Routes>
-        <BottomNav />
-      </div>
+      <AuthedApp />
     </StoreProvider>
   )
 }

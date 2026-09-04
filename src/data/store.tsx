@@ -94,7 +94,7 @@ interface StoreValue extends AppData {
   updateMeal: (id: string, patch: Partial<Omit<Meal, 'id' | 'createdAt'>>) => void
   deleteMeal: (id: string) => void
   upsertWeight: (w: Omit<WeightLog, 'id'>) => void
-  updateProfile: (p: Partial<Profile>) => void
+  updateProfile: (p: Partial<Profile>) => Promise<void>
   addSavedItem: (s: Omit<SavedItem, 'id'>) => void
   updateSavedItem: (id: string, patch: Partial<Omit<SavedItem, 'id'>>) => void
   deleteSavedItem: (id: string) => void
@@ -230,8 +230,13 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
         })
       },
 
-      updateProfile: (p) => {
-        setData((d) => ({ ...d, profile: { ...d.profile, ...p } }))
+      // 乐观更新 + 等待云端结果；失败则回滚并抛出，供页面显示错误、避免「假成功」
+      updateProfile: async (p) => {
+        let prevProfile: Profile | null = null
+        setData((d) => {
+          prevProfile = d.profile
+          return { ...d, profile: { ...d.profile, ...p } }
+        })
         const patch: Record<string, unknown> = {}
         if (p.displayName !== undefined) patch.display_name = p.displayName
         if (p.heightCm !== undefined) patch.height_cm = p.heightCm
@@ -240,7 +245,12 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
         if (p.targetFat !== undefined) patch.target_fat = p.targetFat
         if (p.targetCalories !== undefined) patch.target_calories = p.targetCalories
         if (p.goalType !== undefined) patch.goal_type = p.goalType
-        supabase.from('profiles').update(patch).eq('id', userId).then(({ error }) => error && console.error('updateProfile', error))
+        const { error } = await supabase.from('profiles').update(patch).eq('id', userId)
+        if (error) {
+          console.error('updateProfile', error)
+          if (prevProfile) setData((d) => ({ ...d, profile: prevProfile as Profile }))
+          throw error
+        }
       },
 
       addSavedItem: (s) => {

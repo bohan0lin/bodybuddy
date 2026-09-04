@@ -13,6 +13,8 @@ export default function SettingsTargets() {
   const { toEnergy, fromEnergy } = usePrefs()
   const navigate = useNavigate()
   const [form, setForm] = useState(profile)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
   function setNum<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: Number(value) || 0 }))
@@ -20,9 +22,18 @@ export default function SettingsTargets() {
   function setCalories(shown: string) {
     setForm((f) => ({ ...f, targetCalories: Math.round(fromEnergy(Number(shown) || 0)) }))
   }
-  function save() {
-    updateProfile(form)
-    navigate('/settings')
+  async function save() {
+    if (saving) return
+    setSaving(true)
+    setErr(null)
+    try {
+      await updateProfile(form)
+      navigate('/settings')
+    } catch {
+      setErr(t('settings.saveFailed'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -69,7 +80,8 @@ export default function SettingsTargets() {
             <input type="number" inputMode="decimal" placeholder="0" value={form.targetFat || ''} onChange={(e) => setNum('targetFat', e.target.value)} />
           </div>
         </div>
-        <button className="btn btn-primary btn-block" onClick={save}>{t('settings.saveTargets')}</button>
+        {err && <p style={{ color: 'var(--protein)', fontSize: 13, margin: '0 0 12px' }}>{err}</p>}
+        <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? t('settings.saving') : t('settings.saveTargets')}</button>
       </div>
     </div>
   )

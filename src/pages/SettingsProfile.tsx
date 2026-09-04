@@ -10,10 +10,21 @@ export default function SettingsProfile() {
   const navigate = useNavigate()
   const [displayName, setName] = useState(profile.displayName ?? '')
   const [heightCm, setHeight] = useState(profile.heightCm || 0)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
-  function save() {
-    updateProfile({ displayName, heightCm })
-    navigate('/settings')
+  async function save() {
+    if (saving) return
+    setSaving(true)
+    setErr(null)
+    try {
+      await updateProfile({ displayName, heightCm })
+      navigate('/settings')
+    } catch {
+      setErr(t('settings.saveFailed'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -28,7 +39,8 @@ export default function SettingsProfile() {
           <label>{t('settings.heightCm')}</label>
           <input type="number" inputMode="decimal" placeholder="0" value={heightCm || ''} onChange={(e) => setHeight(Number(e.target.value) || 0)} />
         </div>
-        <button className="btn btn-primary btn-block" onClick={save}>{t('settings.saveTargets')}</button>
+        {err && <p style={{ color: 'var(--protein)', fontSize: 13, margin: '0 0 12px' }}>{err}</p>}
+        <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? t('settings.saving') : t('settings.saveTargets')}</button>
       </div>
     </div>
   )
