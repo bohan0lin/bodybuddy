@@ -4,6 +4,7 @@ import { useStore } from '../data/store'
 import { estimateCalories, formatDateShort, round1, scale, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
+import { takePendingPhoto } from '../lib/photoHandoff'
 import { useT } from '../lib/i18n'
 import { usePrefs } from '../lib/prefs'
 import EnergyToggle from '../components/EnergyToggle'
@@ -122,12 +123,19 @@ export default function LogMeal() {
     if (didInit.current) return
     didInit.current = true
     const st = location.state as { editMeal?: Meal; logDate?: string; returnTo?: string; mode?: 'photo' | 'manual' | 'voice' } | null
-    if (!st) return
-    returnTo.current = st.returnTo ?? null
-    if (st.editMeal) startEditMeal(st.editMeal)
-    else if (st.logDate) setLogDate(st.logDate)
-    // 从主页「拍照识别」进入：把相机入口滚动到视野并聚焦，由用户点击触发相机（不自动请求权限）
-    if (st.mode === 'photo') requestAnimationFrame(() => cameraRef.current?.scrollIntoView({ block: 'start' }))
+    const pending = takePendingPhoto()
+    if (st) {
+      returnTo.current = st.returnTo ?? null
+      if (st.editMeal) startEditMeal(st.editMeal)
+      else if (st.logDate) setLogDate(st.logDate)
+    }
+    // 从主页「拍照识别」手递来的图：直接开始识别（相机/相册已在主页那一次点击里打开）
+    if (pending) {
+      window.scrollTo({ top: 0 })
+      recognizeFile(pending)
+    } else if (st?.mode === 'photo') {
+      requestAnimationFrame(() => cameraRef.current?.scrollIntoView({ block: 'start' }))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -161,10 +169,7 @@ export default function LogMeal() {
     } catch { setLookupMsg(t('log.lookupMiss')) } finally { setLooking(false) }
   }
 
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
+  async function recognizeFile(file: File) {
     setRecognizing(true); setRecogError(null); setRecogItems([])
     try {
       const { data, mediaType } = await fileToResizedBase64(file)
@@ -174,6 +179,12 @@ export default function LogMeal() {
     } catch (err) {
       setRecogError(err instanceof Error ? err.message : t('log.recogEmpty'))
     } finally { setRecognizing(false) }
+  }
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    recognizeFile(file)
   }
 
   function currentFields() {
@@ -220,7 +231,15 @@ export default function LogMeal() {
       {(recogItems.length > 0 || recogError) && (
         <div className="card">
           <p className="card-label">{t('log.recogResult')}</p>
-          {recogError ? <div className="empty">{recogError}</div> : (
+          {recogError ? (
+            <>
+              <div className="empty" style={{ paddingBottom: 14 }}>{recogError}</div>
+              <div className="row">
+                <button className="btn" onClick={() => { setRecogError(null); fileRef.current?.click() }}>{t('log.retry')}</button>
+                <button className="btn" onClick={() => setRecogError(null)}>{t('log.recogManual')}</button>
+              </div>
+            </>
+          ) : (
             <>
               {recogItems.map((it, i) => (
                 <div key={i} className="list-row" style={{ padding: '12px 0' }}>
