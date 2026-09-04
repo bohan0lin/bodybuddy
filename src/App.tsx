@@ -16,9 +16,6 @@ import Knowledge from './pages/Knowledge'
 import LogWorkout from './pages/LogWorkout'
 import SettingsTargets from './pages/SettingsTargets'
 import SettingsProfile from './pages/SettingsProfile'
-import SettingsLanguage from './pages/SettingsLanguage'
-import SettingsTheme from './pages/SettingsTheme'
-import SettingsEnergy from './pages/SettingsEnergy'
 
 function Splash({ text }: { text: string }) {
   return (
@@ -73,9 +70,6 @@ export default function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/targets" element={<SettingsTargets />} />
           <Route path="/settings/profile" element={<SettingsProfile />} />
-          <Route path="/settings/language" element={<SettingsLanguage />} />
-          <Route path="/settings/theme" element={<SettingsTheme />} />
-          <Route path="/settings/energy" element={<SettingsEnergy />} />
           <Route path="/coach" element={<Coach />} />
           <Route path="/knowledge" element={<Knowledge />} />
         </Routes>

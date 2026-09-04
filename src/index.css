@@ -663,3 +663,57 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .summary-track { transition: none; }
 }
+
+/* ══ Me 重设计 ═════════════════════════════════ */
+.profile-header { display: grid; grid-template-columns: 64px 1fr 42px; gap: 14px; align-items: center; margin-bottom: 16px; }
+.avatar {
+  width: 64px; height: 64px; border-radius: 21px;
+  border: 1px solid var(--card-border); background: var(--card-bg); color: var(--accent);
+  display: grid; place-items: center; box-shadow: var(--card-shadow);
+  -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
+  font-size: 24px; font-weight: 500; text-align: left; padding: 0;
+}
+.profile-id { text-align: left; background: none; min-width: 0; }
+.profile-name { font-size: 21px; font-weight: 500; letter-spacing: -0.03em; }
+.streak { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+.goal-hero { padding: 21px; margin-bottom: 14px; overflow: hidden; }
+.goal-kicker { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; font-size: 10px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-muted); }
+.goal-title { position: relative; z-index: 1; font-size: 27px; font-weight: 500; letter-spacing: -0.04em; margin: 14px 0 6px; }
+.goal-copy { position: relative; z-index: 1; font-size: 11px; color: var(--text-muted); line-height: 1.55; max-width: 280px; }
+.goal-targets { position: relative; z-index: 1; display: grid; grid-template-columns: 1.25fr repeat(3, 1fr); gap: 7px; margin-top: 18px; }
+.goal-target { padding: 10px 8px; border-radius: 15px; background: var(--accent-dim); }
+.goal-target > span { display: block; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.goal-target strong { display: block; font-size: 13px; font-weight: 500; margin-top: 3px; }
+.goal-target.primary strong { font-size: 20px; color: var(--accent); }
+.edit-goal { border: 0; background: transparent; color: var(--accent); display: flex; align-items: center; gap: 4px; font-size: 10px; }
+
+.card-heading { position: relative; z-index: 1; font-size: 11px; color: var(--text-muted); margin-bottom: 13px; letter-spacing: 0.02em; }
+.metric-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; width: 100%; }
+.metric { padding: 14px; border-radius: 18px; background: var(--accent-dim); text-align: left; }
+.metric > span { display: block; font-size: 9px; letter-spacing: 0.08em; color: var(--text-muted); text-transform: uppercase; }
+.metric strong { display: block; font-size: 20px; font-weight: 500; margin-top: 7px; }
+.metric small { font-size: 9px; color: var(--text-muted); margin-left: 3px; }
+
+.progress-row { position: relative; z-index: 1; margin-top: 14px; }
+.progress-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; }
+.progress-label span:last-child { color: var(--accent); }
+.progress-track { height: 4px; border-radius: 8px; background: var(--accent-dim); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: inherit; background: var(--accent); }
+
+/* 偏好设置弹层 */
+.sheet-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(30, 24, 20, 0.3); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); display: flex; align-items: flex-start; justify-content: center; padding: calc(80px + env(safe-area-inset-top)) 18px 18px; }
+:root[data-theme='dark'] .sheet-backdrop { background: rgba(0, 0, 0, 0.5); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .sheet-backdrop { background: rgba(0, 0, 0, 0.5); } }
+.sheet-panel { width: 100%; max-width: 440px; padding: 19px; background: var(--surface); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--card-shadow); }
+.sheet-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.sheet-title strong { font-size: 18px; font-weight: 500; }
+.sheet-group { margin-top: 16px; }
+.sheet-group > span { display: block; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 5px; border-radius: 16px; background: var(--surface-2); }
+.segmented.two { grid-template-columns: repeat(2, 1fr); }
+.segmented button { border: 0; border-radius: 12px; padding: 10px 7px; background: transparent; color: var(--text-muted); font-size: 12px; }
+.segmented button.selected { background: var(--accent); color: var(--accent-fg); font-weight: 500; }
+.sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 2px; width: 100%; background: none; text-align: left; font-size: 14px; color: var(--text); }
+.sheet-row .val { color: var(--text-muted); font-size: 13px; }
+.sheet-row.danger { color: var(--protein); }
