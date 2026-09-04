@@ -1,10 +1,20 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { dateOffset, macrosByDate, sumMacros, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
+import AppIcon from '../components/AppIcon'
 import type { MealType } from '../types'
+
+// 浏览器语音识别（Web Speech API）特性检测；不支持则退回文本输入
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type VoiceState = 'idle' | 'listening' | 'processing' | 'error'
+function getSpeechRecognition(): any {
+  return (typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) || null
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface Action {
   type: 'log' | 'save' | 'workout'
@@ -38,12 +48,59 @@ export default function Coach() {
   const { t, lang } = useT()
   const kcalLabel = t('today.kcal')
 
+  const location = useLocation()
+  const voiceMeal = (location.state as { mode?: string } | null)?.mode === 'voice-meal'
+  const voiceSupported = useMemo(() => !!getSpeechRecognition(), [])
+
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [image, setImage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   const fileRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
+
+  // 语音入口不支持时聚焦文本框；卸载时停止识别
+  useEffect(() => {
+    if (voiceMeal && !voiceSupported) inputRef.current?.focus()
+    return () => {
+      try { recognitionRef.current?.stop() } catch { /* ignore */ }
+    }
+  }, [voiceMeal, voiceSupported])
+
+  function toggleVoice() {
+    if (voiceState === 'listening') {
+      try { recognitionRef.current?.stop() } catch { /* ignore */ }
+      setVoiceState('processing')
+      return
+    }
+    const SR = getSpeechRecognition()
+    if (!SR) return
+    try {
+      const rec = new SR()
+      rec.lang = lang === 'zh' ? 'zh-CN' : 'en-US'
+      rec.interimResults = false
+      rec.continuous = false
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rec.onresult = (e: any) => {
+        const transcript = e?.results?.[0]?.[0]?.transcript ?? ''
+        const prefix = voiceMeal ? t('coach.voiceMealPrefix') : ''
+        setInput((prev) => (voiceMeal ? prefix + transcript : (prev ? prev + ' ' : '') + transcript))
+        setVoiceState('idle')
+        requestAnimationFrame(() => inputRef.current?.focus())
+      }
+      rec.onerror = () => setVoiceState('error')
+      rec.onend = () => setVoiceState((s) => (s === 'listening' ? 'idle' : s))
+      recognitionRef.current = rec
+      setVoiceState('listening')
+      rec.start()
+    } catch {
+      setVoiceState('error')
+    }
+  }
 
   const context = useMemo(() => {
     const today = todayStr()
@@ -215,15 +272,38 @@ export default function Coach() {
             <button className="btn-ghost" style={{ fontSize: 16 }} onClick={() => setImage(null)}>×</button>
           </div>
         )}
+        {(voiceState !== 'idle' || voiceMeal) && (
+          <p className="muted" style={{ fontSize: 12, margin: '0 0 8px', color: voiceState === 'error' ? 'var(--protein)' : 'var(--text-muted)' }}>
+            {voiceState === 'listening'
+              ? t('coach.listening')
+              : voiceState === 'processing'
+                ? t('coach.processingSpeech')
+                : voiceState === 'error'
+                  ? t('coach.voiceError')
+                  : voiceMeal && !voiceSupported
+                    ? t('coach.voiceUnsupported')
+                    : t('coach.reviewBeforeSending')}
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input ref={fileRef} type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
-          <button className="btn-ghost" style={{ padding: 6, color: 'var(--text-dim)', display: 'flex' }} onClick={() => fileRef.current?.click()} aria-label="photo">
-            <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 8h3l1.4-2h7.2L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
-              <circle cx="12" cy="13" r="3.2" />
-            </svg>
+          {voiceSupported && (
+            <button
+              className="btn-ghost"
+              style={{ padding: 6, color: voiceState === 'listening' ? 'var(--accent)' : 'var(--text-dim)', display: 'flex' }}
+              onClick={toggleVoice}
+              disabled={loading || voiceState === 'processing'}
+              aria-pressed={voiceState === 'listening'}
+              aria-label={voiceState === 'listening' ? t('coach.stopListening') : t('coach.startListening')}
+            >
+              <AppIcon name="mic" size={22} />
+            </button>
+          )}
+          <button className="btn-ghost" style={{ padding: 6, color: 'var(--text-dim)', display: 'flex' }} onClick={() => fileRef.current?.click()} aria-label={t('today.photoScan')}>
+            <AppIcon name="camera" size={22} />
           </button>
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send()}

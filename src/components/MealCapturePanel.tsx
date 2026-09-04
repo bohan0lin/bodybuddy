@@ -13,7 +13,7 @@ export default function MealCapturePanel() {
         <span className="muted" style={{ fontSize: 11 }}>{t('today.aiAssisted')}</span>
       </div>
       <div className="capture-grid">
-        <button className="capture-tile voice" type="button" onClick={() => navigate('/coach')} aria-label={t('today.voiceLog')}>
+        <button className="capture-tile voice" type="button" onClick={() => navigate('/coach', { state: { mode: 'voice-meal', returnTo: '/' } })} aria-label={t('today.voiceLog')}>
           <span className="capture-icon"><AppIcon name="mic" size={22} /></span>
           <strong>{t('today.voiceLog')}</strong>
           <span>{t('today.voiceSub')}</span>
