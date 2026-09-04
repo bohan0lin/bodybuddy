@@ -55,6 +55,7 @@ export default function LogMeal() {
   const [query, setQuery] = useState('')
 
   const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLButtonElement>(null)
   const [recognizing, setRecognizing] = useState(false)
   const [recogItems, setRecogItems] = useState<RecogItem[]>([])
   const [recogError, setRecogError] = useState<string | null>(null)
@@ -120,11 +121,13 @@ export default function LogMeal() {
   useEffect(() => {
     if (didInit.current) return
     didInit.current = true
-    const st = location.state as { editMeal?: Meal; logDate?: string; returnTo?: string } | null
+    const st = location.state as { editMeal?: Meal; logDate?: string; returnTo?: string; mode?: 'photo' | 'manual' | 'voice' } | null
     if (!st) return
     returnTo.current = st.returnTo ?? null
     if (st.editMeal) startEditMeal(st.editMeal)
     else if (st.logDate) setLogDate(st.logDate)
+    // 从主页「拍照识别」进入：把相机入口滚动到视野并聚焦，由用户点击触发相机（不自动请求权限）
+    if (st.mode === 'photo') requestAnimationFrame(() => cameraRef.current?.scrollIntoView({ block: 'start' }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -204,7 +207,7 @@ export default function LogMeal() {
     <div className="page">
       {/* 拍照识别 */}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{ display: 'none' }} />
-      <button className="card" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', textAlign: 'left' }} onClick={() => fileRef.current?.click()} disabled={recognizing}>
+      <button ref={cameraRef} className="card" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', textAlign: 'left' }} onClick={() => fileRef.current?.click()} disabled={recognizing}>
         <span style={{ fontSize: 24 }}>◐</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 500 }}>{recognizing ? t('log.recognizing') : t('log.photoTitle')}</div>
