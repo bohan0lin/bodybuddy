@@ -1,38 +1,54 @@
 :root {
-  /* ── 浅色主题（默认）────────────────────────────── */
-  --bg: #f5f4f1;
-  --surface: #ffffff;
-  --surface-2: #eceae4;
-  --text: #1b1b1d;
-  --text-dim: #45443f;
-  --text-muted: #6d6b63;
-  --line: rgba(0, 0, 0, 0.10);
-  --line-strong: rgba(0, 0, 0, 0.16);
+  /* ── 浅色主题（默认）· 暖珍珠底 + 珊瑚强调 ───────── */
+  --bg: #f5f0e7;
+  --surface: #fdfbf7; /* 实心卡片（旧屏幕沿用） */
+  --surface-2: #ece7dc; /* 输入框 / chip 底 */
+  --text: #211d19;
+  --text-dim: #55493f;
+  --text-muted: #7a7169;
+  --line: rgba(90, 70, 50, 0.13);
+  --line-strong: rgba(90, 70, 50, 0.22);
 
-  --accent: #8a6d2f; /* 浅色下用较深的铜金，保证文字可读 */
-  --accent-fg: #ffffff; /* 叠在 accent 底上的前景色 */
-  --accent-dim: rgba(138, 109, 47, 0.12);
+  --accent: #fb775b; /* 珊瑚：主操作与卡路里环 */
+  --accent-fg: #ffffff;
+  --accent-dim: rgba(251, 119, 91, 0.12);
+  --accent-lav: #7258a2; /* 拍照识别（薰衣草） */
+  --accent-lav-bg: rgba(244, 239, 255, 0.66);
+  --accent-teal: #278373; /* 运动（薄荷） */
+  --accent-teal-bg: rgba(89, 185, 166, 0.18);
 
   --protein: #c05a44;
   --carbs: #a2802f;
   --fat: #5f7d54;
-  --cal: #8a6d2f;
-  --cal-2: #6a5121; /* 卡路里套圈第 2 圈（更深） */
-  --cal-3: #4a3813; /* 卡路里套圈第 3 圈（最深） */
-  --nav-bg: rgba(245, 244, 241, 0.9);
+  --cal: #fb775b;
+  --cal-2: #d85a30; /* 卡路里套圈第 2 圈（更深） */
+  --cal-3: #993c1d; /* 卡路里套圈第 3 圈（最深） */
+  --nav-bg: rgba(255, 250, 244, 0.72);
 
-  --radius: 20px;
-  --radius-sm: 12px;
+  /* 浮起卡片（半透明 + 柔和阴影 + 顶部高光） */
+  --card-bg: rgba(255, 255, 255, 0.55);
+  --card-border: rgba(255, 255, 255, 0.72);
+  --card-shadow: 0 16px 38px rgba(83, 61, 40, 0.1);
+  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --card-blur: blur(22px) saturate(135%);
+  /* 流动光场（置于内容之后） */
+  --glow: radial-gradient(circle at 8% 8%, rgba(255, 190, 142, 0.6), transparent 30%),
+    radial-gradient(circle at 90% 26%, rgba(135, 216, 207, 0.4), transparent 28%),
+    radial-gradient(circle at 46% 82%, rgba(255, 220, 145, 0.42), transparent 33%);
+  --glow-blur: blur(24px);
+
+  --radius: 24px;
+  --radius-sm: 16px;
 
   color-scheme: light;
 }
 
-/* 深色 token（跟随系统，且未手动选浅色时） */
+/* 深色 token（跟随系统，且未手动选浅色时）· 黑金身份 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0a0a0b;
-    --surface: #131316;
-    --surface-2: #1c1c20;
+    --bg: #09090a;
+    --surface: #17171b;
+    --surface-2: #202024;
     --text: #f2f0ec;
     --text-dim: #a5a29b;
     --text-muted: #8a877e;
@@ -41,22 +57,35 @@
     --accent: #c8a97e;
     --accent-fg: #1a1206;
     --accent-dim: rgba(200, 169, 126, 0.13);
+    --accent-lav: #c8a97e;
+    --accent-lav-bg: rgba(200, 169, 126, 0.11);
+    --accent-teal: #c8a97e;
+    --accent-teal-bg: rgba(200, 169, 126, 0.11);
     --protein: #cf8d78;
     --carbs: #ccb079;
     --fat: #93a889;
     --cal: #c8a97e;
-    --cal-2: #9d7d47; /* 卡路里套圈第 2 圈（更深） */
-    --cal-3: #6f5628; /* 卡路里套圈第 3 圈（最深） */
+    --cal-2: #9d7d47;
+    --cal-3: #6f5628;
     --nav-bg: rgba(10, 10, 11, 0.92);
+    --card-bg: linear-gradient(145deg, rgba(38, 38, 44, 0.98), rgba(23, 23, 27, 0.96));
+    --card-border: rgba(200, 169, 126, 0.22);
+    --card-shadow: 0 24px 56px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(200, 169, 126, 0.05);
+    --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --card-blur: none;
+    --glow: radial-gradient(circle at 12% 8%, rgba(200, 169, 126, 0.26), transparent 28%),
+      radial-gradient(circle at 88% 38%, rgba(116, 83, 42, 0.2), transparent 26%),
+      radial-gradient(circle at 48% 80%, rgba(200, 169, 126, 0.12), transparent 32%);
+    --glow-blur: blur(30px);
     color-scheme: dark;
   }
 }
 
 /* 手动选深色时（覆盖 media） */
 :root[data-theme='dark'] {
-  --bg: #0a0a0b;
-  --surface: #131316;
-  --surface-2: #1c1c20;
+  --bg: #09090a;
+  --surface: #17171b;
+  --surface-2: #202024;
   --text: #f2f0ec;
   --text-dim: #a5a29b;
   --text-muted: #8a877e;
@@ -65,13 +94,26 @@
   --accent: #c8a97e;
   --accent-fg: #1a1206;
   --accent-dim: rgba(200, 169, 126, 0.13);
+  --accent-lav: #c8a97e;
+  --accent-lav-bg: rgba(200, 169, 126, 0.11);
+  --accent-teal: #c8a97e;
+  --accent-teal-bg: rgba(200, 169, 126, 0.11);
   --protein: #cf8d78;
   --carbs: #ccb079;
   --fat: #93a889;
   --cal: #c8a97e;
-  --cal-2: #9d7d47; /* 卡路里套圈第 2 圈（更深） */
-  --cal-3: #6f5628; /* 卡路里套圈第 3 圈（最深） */
+  --cal-2: #9d7d47;
+  --cal-3: #6f5628;
   --nav-bg: rgba(10, 10, 11, 0.92);
+  --card-bg: linear-gradient(145deg, rgba(38, 38, 44, 0.98), rgba(23, 23, 27, 0.96));
+  --card-border: rgba(200, 169, 126, 0.22);
+  --card-shadow: 0 24px 56px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(200, 169, 126, 0.05);
+  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --card-blur: none;
+  --glow: radial-gradient(circle at 12% 8%, rgba(200, 169, 126, 0.26), transparent 28%),
+    radial-gradient(circle at 88% 38%, rgba(116, 83, 42, 0.2), transparent 26%),
+    radial-gradient(circle at 48% 80%, rgba(200, 169, 126, 0.12), transparent 32%);
+  --glow-blur: blur(30px);
   color-scheme: dark;
 }
 
@@ -140,6 +182,29 @@ a {
   flex: 1 0 auto; /* 撑满剩余空间，把 sticky 导航栏推到屏幕底部 */
   /* 顶部加 iOS 安全区避免被刘海遮住；底部留一点间距（sticky 导航栏自带高度） */
   padding: calc(28px + env(safe-area-inset-top)) 20px 24px;
+  position: relative;
+  z-index: 1; /* 浮在流动光场之上 */
+}
+
+/* 流动光场：极低对比的径向光，缓慢移动，置于内容之后 */
+.app-glow {
+  position: absolute;
+  inset: -90px;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--glow);
+  filter: var(--glow-blur);
+  animation: app-flow 12s ease-in-out infinite alternate;
+}
+
+@keyframes app-flow {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+  50% { transform: translate3d(3%, 2%, 0) scale(1.05); }
+  100% { transform: translate3d(-1%, 4%, 0) scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-glow { animation: none; }
 }
 
 /* 小标题 eyebrow：全大写 + 字距 */
@@ -164,13 +229,47 @@ a {
   font-weight: 600;
 }
 
-/* ── 面板（发丝边框，无重阴影）───────────────── */
+/* ── 面板（浮起卡片：半透明 + 柔和阴影 + 顶部高光）── */
 .card {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius);
+  box-shadow: var(--card-shadow), var(--card-highlight);
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
   padding: 22px;
   margin-bottom: 16px;
+}
+
+/* 浮起卡片（Today / Me 主视觉复用），带顶部斜向高光 */
+.float-card {
+  position: relative;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow), var(--card-highlight);
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
+}
+
+.float-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.5), transparent 36%, rgba(255, 255, 255, 0.14) 66%, transparent);
+}
+
+:root[data-theme='dark'] .float-card::before {
+  background: linear-gradient(120deg, rgba(200, 169, 126, 0.12), transparent 34%, rgba(255, 255, 255, 0.03) 68%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .float-card::before {
+    background: linear-gradient(120deg, rgba(200, 169, 126, 0.12), transparent 34%, rgba(255, 255, 255, 0.03) 68%, transparent);
+  }
 }
 
 .card-label {

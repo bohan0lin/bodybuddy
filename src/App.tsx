@@ -61,6 +61,7 @@ export default function App() {
   return (
     <StoreProvider userId={session.user.id}>
       <div className="app-shell">
+        <div className="app-glow" aria-hidden="true" />
         <Routes>
           <Route path="/" element={<Today />} />
           <Route path="/body" element={<Body />} />
