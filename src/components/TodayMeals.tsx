@@ -19,11 +19,15 @@ export default function TodayMeals({ meals, onOpen, onViewAll }: { meals: Meal[]
     <>
       <div className="section-title">
         <strong>{t('today.todaysMeals')}</strong>
-        {meals.length > 3 ? (
-          <button className="link" type="button" onClick={onViewAll}>{t('today.viewAll')}</button>
-        ) : (
-          <span className="muted" style={{ fontSize: 11 }}>{t('today.mealsCount', { n: meals.length })}</span>
-        )}
+        <span className="muted" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {t('today.mealsCount', { n: meals.length })}
+          {meals.length > 3 && (
+            <>
+              <span aria-hidden="true">·</span>
+              <button className="link" type="button" onClick={onViewAll}>{t('today.viewAll')}</button>
+            </>
+          )}
+        </span>
       </div>
       {meals.length === 0 ? (
         <p className="muted" style={{ fontSize: 13, padding: '2px 2px 4px' }}>{t('today.noMeals')}</p>

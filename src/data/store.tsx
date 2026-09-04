@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { KnowledgeItem, Meal, Profile, SavedItem, WeightLog, Workout } from '../types'
+import { GOAL_TYPES, type GoalType, type KnowledgeItem, type Meal, type Profile, type SavedItem, type WeightLog, type Workout } from '../types'
 import { estimateCalories } from '../lib/nutrition'
 import { supabase } from '../lib/supabase'
 
@@ -80,7 +80,7 @@ const toProfile = (r: any): Profile => ({
   targetCarbs: Number(r.target_carbs),
   targetFat: Number(r.target_fat),
   targetCalories: Number(r.target_calories),
-  goalType: r.goal_type ?? undefined,
+  goalType: (GOAL_TYPES as string[]).includes(r.goal_type) ? (r.goal_type as GoalType) : undefined,
 })
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

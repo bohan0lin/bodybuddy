@@ -1,9 +1,9 @@
 import { useT } from '../lib/i18n'
-import type { Macros } from '../types'
+import type { GoalType, Macros } from '../types'
 import AppIcon from './AppIcon'
 
 // 目标英雄区：有 goalType 时展示目标名 + 说明；否则退化为「每日目标」并突出真实数值
-export default function GoalHero({ goalType, targets, onEdit }: { goalType?: string | null; targets: Macros; onEdit: () => void }) {
+export default function GoalHero({ goalType, targets, onEdit }: { goalType?: GoalType | null; targets: Macros; onEdit: () => void }) {
   const { t } = useT()
   const goalName = goalType ? t(('me.goal.' + goalType) as 'me.goal.recomposition') : null
   const fmt = (v: number, unit = '') => (v > 0 ? `${v}${unit}` : '—')

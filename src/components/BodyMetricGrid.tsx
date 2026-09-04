@@ -20,7 +20,7 @@ export default function BodyMetricGrid({ heightCm, weight, bodyFat, onOpen }: { 
         {cell(t('me.height'), h ? String(h) : null, 'cm')}
         {cell(t('me.weight'), weight && weight > 0 ? String(weight) : null, 'kg')}
         {cell(t('me.bmi'), bmi)}
-        {cell(t('me.bodyFat'), bodyFat != null ? String(bodyFat) : null, '%')}
+        {cell(t('me.bodyFat'), bodyFat != null && bodyFat > 0 ? String(bodyFat) : null, '%')}
       </div>
     </button>
   )

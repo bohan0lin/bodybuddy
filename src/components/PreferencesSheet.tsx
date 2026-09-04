@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../data/auth'
 import { useT, type Lang } from '../lib/i18n'
@@ -10,6 +11,50 @@ export default function PreferencesSheet({ open, onClose }: { open: boolean; onC
   const { theme, setTheme } = usePrefs()
   const { session, signOut } = useAuth()
   const navigate = useNavigate()
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // 无障碍：打开时聚焦进弹层、锁背景滚动、Esc 关闭、Tab 焦点陷阱；关闭时归还焦点给触发按钮
+  useEffect(() => {
+    if (!open) return
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const focusables = () =>
+      panelRef.current
+        ? Array.from(panelRef.current.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(
+            (el) => !el.hasAttribute('disabled'),
+          )
+        : []
+    const raf = requestAnimationFrame(() => focusables()[0]?.focus())
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+      if (e.key === 'Tab') {
+        const f = focusables()
+        if (!f.length) return
+        const first = f[0]
+        const last = f[f.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      cancelAnimationFrame(raf)
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+      previouslyFocused?.focus()
+    }
+  }, [open, onClose])
+
   if (!open) return null
 
   const langs: { key: Lang; label: string }[] = [
@@ -23,10 +68,10 @@ export default function PreferencesSheet({ open, onClose }: { open: boolean; onC
   ]
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label={t('me.preferences')} onClick={onClose}>
-      <div className="sheet-panel" onClick={(e) => e.stopPropagation()}>
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet-panel" ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="pref-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-title">
-          <strong>{t('me.preferences')}</strong>
+          <strong id="pref-title">{t('me.preferences')}</strong>
           <button className="icon-btn" type="button" onClick={onClose} aria-label={t('me.close')}><AppIcon name="x" size={18} /></button>
         </div>
 

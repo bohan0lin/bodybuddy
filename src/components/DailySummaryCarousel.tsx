@@ -125,14 +125,17 @@ export default function DailySummaryCarousel({ targets, consumed, todayWorkouts,
             )}
           </article>
         </div>
-        <button className="summary-next" type="button" aria-label={t('today.workout')} onClick={() => setCard(card === 0 ? 1 : 0)}>
+        <button className="summary-next" type="button" aria-label={card === 0 ? t('today.showWorkout') : t('today.showNutrition')} onClick={() => setCard(card === 0 ? 1 : 0)}>
           <AppIcon name={card === 0 ? 'chevron-right' : 'chevron-left'} size={18} />
         </button>
       </section>
-      <div className="summary-dots" role="tablist" aria-label={`${t('today.remaining')} / ${t('today.workout')}`}>
-        <button className={'summary-dot' + (card === 0 ? ' on' : '')} type="button" role="tab" aria-selected={card === 0} aria-label={t('today.remaining')} onClick={() => setCard(0)} />
-        <button className={'summary-dot' + (card === 1 ? ' on' : '')} type="button" role="tab" aria-selected={card === 1} aria-label={t('today.workout')} onClick={() => setCard(1)} />
+      <div className="summary-dots" role="group" aria-label={`${t('today.remaining')} / ${t('today.workout')}`}>
+        <button className={'summary-dot' + (card === 0 ? ' on' : '')} type="button" aria-current={card === 0 ? 'true' : undefined} aria-label={t('today.remaining')} onClick={() => setCard(0)} />
+        <button className={'summary-dot' + (card === 1 ? ' on' : '')} type="button" aria-current={card === 1 ? 'true' : undefined} aria-label={t('today.workout')} onClick={() => setCard(1)} />
       </div>
+      <span aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>
+        {card === 0 ? t('today.remaining') : t('today.workout')}
+      </span>
     </>
   )
 }
