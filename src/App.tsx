@@ -1,21 +1,24 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { isConfigured } from './lib/supabase'
 import { useAuth } from './data/auth'
 import { StoreProvider, useStore } from './data/store'
 import BottomNav from './components/BottomNav'
 import Today from './pages/Today'
-import Body from './pages/Body'
-import LogMeal from './pages/LogMeal'
-import Settings from './pages/Settings'
 import Login from './pages/Login'
-import History from './pages/History'
-import Calendar from './pages/Calendar'
-import Day from './pages/Day'
-import Coach from './pages/Coach'
-import Knowledge from './pages/Knowledge'
-import LogWorkout from './pages/LogWorkout'
-import SettingsTargets from './pages/SettingsTargets'
-import SettingsProfile from './pages/SettingsProfile'
+
+// 首页与外壳留在初始包；其余路由按需加载，减小首屏 JS
+const Body = lazy(() => import('./pages/Body'))
+const LogMeal = lazy(() => import('./pages/LogMeal'))
+const Settings = lazy(() => import('./pages/Settings'))
+const History = lazy(() => import('./pages/History'))
+const Calendar = lazy(() => import('./pages/Calendar'))
+const Day = lazy(() => import('./pages/Day'))
+const Coach = lazy(() => import('./pages/Coach'))
+const Knowledge = lazy(() => import('./pages/Knowledge'))
+const LogWorkout = lazy(() => import('./pages/LogWorkout'))
+const SettingsTargets = lazy(() => import('./pages/SettingsTargets'))
+const SettingsProfile = lazy(() => import('./pages/SettingsProfile'))
 
 function Splash({ text }: { text: string }) {
   return (
@@ -23,6 +26,15 @@ function Splash({ text }: { text: string }) {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span className="muted" style={{ letterSpacing: '0.2em', textTransform: 'uppercase', fontSize: 12 }}>{text}</span>
       </div>
+    </div>
+  )
+}
+
+// 路由切换时的轻量品牌占位（懒加载 chunk 到达前）
+function RouteFallback() {
+  return (
+    <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span className="muted" style={{ letterSpacing: '0.2em', textTransform: 'uppercase', fontSize: 12 }}>BodyBuddy</span>
     </div>
   )
 }
@@ -55,20 +67,22 @@ function AuthedApp() {
   return (
     <div className="app-shell">
       <div className="app-glow" aria-hidden="true" />
-      <Routes>
-        <Route path="/" element={<Today />} />
-        <Route path="/body" element={<Body />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/calendar" element={<Calendar />} />
-        <Route path="/day/:date" element={<Day />} />
-        <Route path="/log" element={<LogMeal />} />
-        <Route path="/workout" element={<LogWorkout />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/settings/targets" element={<SettingsTargets />} />
-        <Route path="/settings/profile" element={<SettingsProfile />} />
-        <Route path="/coach" element={<Coach />} />
-        <Route path="/knowledge" element={<Knowledge />} />
-      </Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<Today />} />
+          <Route path="/body" element={<Body />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/day/:date" element={<Day />} />
+          <Route path="/log" element={<LogMeal />} />
+          <Route path="/workout" element={<LogWorkout />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/targets" element={<SettingsTargets />} />
+          <Route path="/settings/profile" element={<SettingsProfile />} />
+          <Route path="/coach" element={<Coach />} />
+          <Route path="/knowledge" element={<Knowledge />} />
+        </Routes>
+      </Suspense>
       <BottomNav />
     </div>
   )
