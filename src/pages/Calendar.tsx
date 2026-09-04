@@ -4,7 +4,7 @@ import { useStore } from '../data/store'
 import { macrosByDate, todayStr } from '../lib/nutrition'
 import { useT } from '../lib/i18n'
 import CalorieRing from '../components/CalorieRing'
-import WorkoutDot from '../components/WorkoutDot'
+import AppIcon from '../components/AppIcon'
 
 function ymd(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -69,10 +69,10 @@ export default function Calendar() {
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '6px 0', borderRadius: 10, background: isToday ? 'var(--accent-dim)' : 'transparent', cursor: isFuture ? 'default' : 'pointer' }}
             >
               <span className="num" style={{ fontSize: 12, color: isToday ? 'var(--accent)' : isFuture ? 'var(--text-muted)' : 'var(--text)', fontWeight: isToday ? 600 : 400 }}>{d}</span>
-              <span style={{ opacity: isFuture ? 0.4 : 1 }}>
+              <span className="week-ring-wrap" style={{ opacity: isFuture ? 0.4 : 1, width: 30, height: 30, margin: '4px auto 0' }}>
                 <CalorieRing calories={m.calories} target={profile.targetCalories} size={30} stroke={2.6} />
+                {workoutDates.has(date) && <AppIcon name="dumbbell" size={11} strokeWidth={2} className="week-dumbbell" />}
               </span>
-              <span style={{ height: 11, display: 'flex', alignItems: 'center' }}>{workoutDates.has(date) && <WorkoutDot size={11} />}</span>
             </button>
           )
         })}
