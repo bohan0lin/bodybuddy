@@ -13,6 +13,8 @@ const zh: Dict = {
   'nav.coach': '教练',
   'nav.knowledge': '知识',
   'nav.me': '我的',
+  'nav.calendar': '日历',
+  'nav.primary': '主导航',
   // knowledge（知识库）
   'knowledge.title': '知识库',
   'knowledge.tip': '看到好的健身知识，用一句话说给它，AI 帮你整理入库；教练会结合这些给你建议。',
@@ -229,6 +231,8 @@ const en: Dict = {
   'nav.coach': 'Coach',
   'nav.knowledge': 'Knowledge',
   'nav.me': 'Me',
+  'nav.calendar': 'Calendar',
+  'nav.primary': 'Primary navigation',
   'knowledge.title': 'Knowledge',
   'knowledge.tip': 'Heard a good fitness tip? Say it in one line — AI tidies it into your library, and the coach uses it.',
   'knowledge.inputPh': 'Speak or type one knowledge point…',
