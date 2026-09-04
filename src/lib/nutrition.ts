@@ -50,6 +50,13 @@ export function dateOffset(days: number): string {
   return todayStr(new Date(Date.now() + days * 86400000))
 }
 
+// 相对某个 YYYY-MM-DD 偏移若干天（用本地日历，不受夏令时/时区跳变影响）
+export function shiftDate(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + days)
+  return todayStr(d)
+}
+
 // YYYY-MM-DD 的星期几（0=周日）
 export function weekdayOf(dateStr: string): number {
   return new Date(dateStr + 'T00:00:00').getDay()

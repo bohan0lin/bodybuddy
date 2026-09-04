@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { useT } from '../lib/i18n'
-import { dateOffset, todayStr } from '../lib/nutrition'
+import { todayStr } from '../lib/nutrition'
+import { distinctDaysInMonth, trackingStreak } from '../lib/insights'
 import ProfileHeader from '../components/ProfileHeader'
 import GoalHero from '../components/GoalHero'
 import BodyMetricGrid from '../components/BodyMetricGrid'
@@ -22,28 +23,13 @@ export default function Settings() {
     () => new Set<string>([...meals.map((m) => m.date), ...workouts.map((w) => w.date)]),
     [meals, workouts],
   )
-  const streak = useMemo(() => {
-    let n = 0
-    let i = trackedDates.has(today) ? 0 : -1
-    while (trackedDates.has(dateOffset(i))) {
-      n++
-      i--
-    }
-    return n
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trackedDates, today])
+  const streak = useMemo(() => trackingStreak(trackedDates, today), [trackedDates, today])
 
   // 本月记录：记录天数 / 已过天数；运动天数（去重）
   const monthPrefix = today.slice(0, 7)
   const elapsedDays = new Date().getDate()
-  const mealDays = useMemo(
-    () => new Set(meals.filter((m) => m.date.startsWith(monthPrefix)).map((m) => m.date)).size,
-    [meals, monthPrefix],
-  )
-  const workoutDaysMonth = useMemo(
-    () => new Set(workouts.filter((w) => w.date.startsWith(monthPrefix)).map((w) => w.date)).size,
-    [workouts, monthPrefix],
-  )
+  const mealDays = useMemo(() => distinctDaysInMonth(meals.map((m) => m.date), monthPrefix), [meals, monthPrefix])
+  const workoutDaysMonth = useMemo(() => distinctDaysInMonth(workouts.map((w) => w.date), monthPrefix), [workouts, monthPrefix])
   const mealPct = elapsedDays > 0 ? Math.min(100, Math.round((mealDays / elapsedDays) * 100)) : 0
 
   const targets = { protein: profile.targetProtein, carbs: profile.targetCarbs, fat: profile.targetFat, calories: profile.targetCalories }

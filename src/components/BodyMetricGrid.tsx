@@ -1,10 +1,12 @@
 import { useT } from '../lib/i18n'
+import { bmi as calcBmi } from '../lib/insights'
 
 // 身体指标 2×2：身高 / 体重 / BMI / 体脂；缺失显示「—」，绝不把 0 当真实测量
 export default function BodyMetricGrid({ heightCm, weight, bodyFat, onOpen }: { heightCm: number; weight?: number; bodyFat?: number; onOpen: () => void }) {
   const { t } = useT()
   const h = heightCm > 0 ? heightCm : null
-  const bmi = h && weight && weight > 0 ? (weight / (h / 100) ** 2).toFixed(1) : null
+  const bmiValue = calcBmi(weight, heightCm)
+  const bmi = bmiValue != null ? bmiValue.toFixed(1) : null
 
   const cell = (label: string, value: string | null, unit?: string) => (
     <div className="metric">
