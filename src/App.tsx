@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom'
 import { isConfigured } from './lib/supabase'
 import { useAuth } from './data/auth'
 import { StoreProvider, useStore } from './data/store'
+import { useT } from './lib/i18n'
 import BottomNav from './components/BottomNav'
 import Today from './pages/Today'
 import Login from './pages/Login'
@@ -60,10 +61,24 @@ VITE_SUPABASE_ANON_KEY=eyJhbGci...`}
   )
 }
 
+// 数据加载失败：不渲染受保护路由，给出重试（绝不在错误时展示可编辑的全 0 表单）
+function HydrationError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useT()
+  return (
+    <div className="app-shell">
+      <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, textAlign: 'center' }}>
+        <p className="muted" style={{ fontSize: 14, lineHeight: 1.7, maxWidth: 280 }}>{t('common.loadFailed')}</p>
+        <button className="btn btn-primary" onClick={onRetry}>{t('common.retry')}</button>
+      </div>
+    </div>
+  )
+}
+
 // 数据水合完成前不渲染受保护路由，避免表单从 DEFAULT_PROFILE(全 0) 初始化后覆盖真实数据
 function AuthedApp() {
-  const { loading } = useStore()
+  const { loading, hydrationError, reload } = useStore()
   if (loading) return <Splash text="BodyBuddy" />
+  if (hydrationError) return <HydrationError onRetry={reload} />
   return (
     <div className="app-shell">
       <div className="app-glow" aria-hidden="true" />

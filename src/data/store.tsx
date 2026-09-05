@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { GOAL_TYPES, type GoalType, type KnowledgeItem, type Meal, type Profile, type SavedItem, type WeightLog, type Workout } from '../types'
 import { estimateCalories } from '../lib/nutrition'
+import { hasHydrationError, shouldInsertDefaultProfile } from '../lib/hydration'
 import { supabase } from '../lib/supabase'
 
 // ── Supabase 数据层 ───────────────────────────────────────────
@@ -90,6 +91,8 @@ function uid(): string {
 
 interface StoreValue extends AppData {
   loading: boolean
+  hydrationError: boolean
+  reload: () => void
   addMeal: (m: Omit<Meal, 'id' | 'createdAt'>) => void
   updateMeal: (id: string, patch: Partial<Omit<Meal, 'id' | 'createdAt'>>) => void
   deleteMeal: (id: string) => void
@@ -119,12 +122,16 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     knowledgeItems: [],
   })
   const [loading, setLoading] = useState(true)
+  const [hydrationError, setHydrationError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const reload = useCallback(() => setReloadKey((k) => k + 1), [])
 
   // 登录后拉取该用户全部数据
   useEffect(() => {
     let alive = true
     ;(async () => {
       setLoading(true)
+      setHydrationError(false)
       const [prof, weights, meals, saved, workouts, knowledge] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
         supabase.from('weight_logs').select('*').eq('user_id', userId),
@@ -135,9 +142,17 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       ])
       if (!alive) return
 
-      // 若 profile 尚未创建（触发器兜底失败），插入默认
+      // 任一查询出错都视为水合失败：不渲染受保护路由、给出重试，绝不把错误当成空数据
+      if (hasHydrationError([prof.error, weights.error, meals.error, saved.error, workouts.error, knowledge.error])) {
+        console.error('store hydration failed', { prof: prof.error, weights: weights.error, meals: meals.error, saved: saved.error, workouts: workouts.error, knowledge: knowledge.error })
+        setHydrationError(true)
+        setLoading(false)
+        return
+      }
+
+      // 仅在「确认无该行」（查询成功且 data 为空）时才创建默认资料
       let profile = prof.data ? toProfile(prof.data) : DEFAULT_PROFILE
-      if (!prof.data) {
+      if (shouldInsertDefaultProfile(prof)) {
         await supabase.from('profiles').insert({ id: userId })
         profile = DEFAULT_PROFILE
       }
@@ -159,13 +174,15 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     return () => {
       alive = false
     }
-  }, [userId])
+  }, [userId, reloadKey])
 
   const value = useMemo<StoreValue>(() => {
     const sortedWeights = [...data.weightLogs].sort((a, b) => a.date.localeCompare(b.date))
     return {
       ...data,
       loading,
+      hydrationError,
+      reload,
 
       addMeal: (m) => {
         const calories = m.calories || estimateCalories(m.protein, m.carbs, m.fat)
@@ -390,7 +407,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       latestWeight: sortedWeights[sortedWeights.length - 1],
       prevWeight: sortedWeights[sortedWeights.length - 2],
     }
-  }, [data, loading, userId])
+  }, [data, loading, hydrationError, reload, userId])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
