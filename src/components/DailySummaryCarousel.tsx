@@ -72,7 +72,7 @@ export default function DailySummaryCarousel({ targets, consumed, todayWorkouts,
           }}
         >
           {/* 营养面 */}
-          <article className="summary-face">
+          <article className="summary-face" inert={card !== 0 ? true : undefined} aria-hidden={card !== 0 ? true : undefined}>
             <div className="hero-top">
               <div>
                 <div className="hero-label">{hasTarget ? t('today.remaining') : t('today.intake')}</div>
@@ -96,7 +96,7 @@ export default function DailySummaryCarousel({ targets, consumed, todayWorkouts,
           </article>
 
           {/* 运动面 */}
-          <article className="summary-face">
+          <article className="summary-face" inert={card !== 1 ? true : undefined} aria-hidden={card !== 1 ? true : undefined}>
             {latest ? (
               <>
                 <div className="hero-top">

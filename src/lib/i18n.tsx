@@ -15,6 +15,8 @@ const zh: Dict = {
   'nav.me': '我的',
   'nav.calendar': '日历',
   'nav.primary': '主导航',
+  'calendar.prevMonth': '上个月',
+  'calendar.nextMonth': '下个月',
   // knowledge（知识库）
   'knowledge.title': '知识库',
   'knowledge.tip': '看到好的健身知识，用一句话说给它，AI 帮你整理入库；教练会结合这些给你建议。',
@@ -296,6 +298,8 @@ const en: Dict = {
   'nav.me': 'Me',
   'nav.calendar': 'Calendar',
   'nav.primary': 'Primary navigation',
+  'calendar.prevMonth': 'Previous month',
+  'calendar.nextMonth': 'Next month',
   'knowledge.title': 'Knowledge',
   'knowledge.tip': 'Heard a good fitness tip? Say it in one line — AI tidies it into your library, and the coach uses it.',
   'knowledge.inputPh': 'Speak or type one knowledge point…',

@@ -46,9 +46,9 @@ export default function Calendar() {
       </button>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <button className="btn-ghost" style={{ padding: 6, fontSize: 20 }} onClick={() => setCursor(new Date(year, month - 1, 1))} aria-label="prev">‹</button>
+        <button className="btn-ghost" style={{ padding: 6, fontSize: 20 }} onClick={() => setCursor(new Date(year, month - 1, 1))} aria-label={t('calendar.prevMonth')}>‹</button>
         <span style={{ fontSize: 17, fontWeight: 500 }} className="num">{monthLabel}</span>
-        <button className="btn-ghost" style={{ padding: 6, fontSize: 20, opacity: atCurrentMonth ? 0.25 : 1 }} disabled={atCurrentMonth} onClick={() => !atCurrentMonth && setCursor(new Date(year, month + 1, 1))} aria-label="next">›</button>
+        <button className="btn-ghost" style={{ padding: 6, fontSize: 20, opacity: atCurrentMonth ? 0.25 : 1 }} disabled={atCurrentMonth} onClick={() => !atCurrentMonth && setCursor(new Date(year, month + 1, 1))} aria-label={t('calendar.nextMonth')}>›</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>

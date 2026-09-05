@@ -46,8 +46,11 @@ export function macrosByDate(meals: Meal[]): Map<string, Macros> {
 }
 
 // 相对今天的偏移日期（0=今天，-1=昨天）转 YYYY-MM-DD
+// 用本地日历 setDate 推移，避免固定 86400000ms 在夏令时切换日出错
 export function dateOffset(days: number): string {
-  return todayStr(new Date(Date.now() + days * 86400000))
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return todayStr(d)
 }
 
 // 相对某个 YYYY-MM-DD 偏移若干天（用本地日历，不受夏令时/时区跳变影响）

@@ -5,12 +5,12 @@ import { dateOffset, macrosByDate, sumMacros, todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
+import { finalizeVoiceState, type VoiceState } from '../lib/voice'
 import AppIcon from '../components/AppIcon'
 import type { MealType } from '../types'
 
 // 浏览器语音识别（Web Speech API）特性检测；不支持则退回文本输入
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type VoiceState = 'idle' | 'listening' | 'processing' | 'error'
 function getSpeechRecognition(): any {
   return (typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) || null
 }
@@ -93,7 +93,7 @@ export default function Coach() {
         requestAnimationFrame(() => inputRef.current?.focus())
       }
       rec.onerror = () => setVoiceState('error')
-      rec.onend = () => setVoiceState((s) => (s === 'listening' ? 'idle' : s))
+      rec.onend = () => setVoiceState(finalizeVoiceState)
       recognitionRef.current = rec
       setVoiceState('listening')
       rec.start()
