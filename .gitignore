@@ -12,10 +12,14 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Editor / tooling directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
+.claude/
+
+# 本地保留、不入仓库的文档
+docs/PRODUCTION_READINESS_ROADMAP.md
 .DS_Store
 *.suo
 *.ntvs*
