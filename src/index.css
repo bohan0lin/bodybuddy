@@ -592,6 +592,12 @@ a {
 .summary-track { display: flex; width: 200%; transition: transform 0.42s cubic-bezier(0.2, 0.85, 0.25, 1); }
 .summary-track.second { transform: translateX(-50%); }
 .summary-face { width: 50%; flex: 0 0 50%; min-height: 208px; padding: 20px; }
+
+/* 叠放式两张卡片：按住上面这张上下拖动，翻到后面露出下面那张 */
+.summary-stack { position: relative; height: 214px; margin-bottom: 20px; }
+.summary-card { position: absolute; left: 0; right: 0; top: 0; height: 100%; padding: 20px; overflow: hidden; transition: transform 0.42s cubic-bezier(0.2, 0.85, 0.25, 1), opacity 0.42s; will-change: transform; }
+.summary-stack.dragging .summary-card { transition: none; }
+@media (prefers-reduced-motion: reduce) { .summary-card { transition: none; } }
 .summary-next {
   position: absolute; right: 13px; top: 86px;
   width: 34px; height: 34px; border-radius: 13px;
