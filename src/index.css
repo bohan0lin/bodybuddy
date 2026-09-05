@@ -127,7 +127,7 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  overflow-x: hidden; /* 杜绝横向滑出边界 */
+  overflow-x: clip; /* 杜绝横向滑出边界；clip 不制造滚动容器，避免竖向布局副作用 */
 }
 
 html,
