@@ -81,7 +81,7 @@ function AuthedApp() {
   if (hydrationError) return <HydrationError onRetry={reload} />
   return (
     <div className="app-shell">
-      <div className="app-glow" aria-hidden="true" />
+      <div className="app-glow-clip" aria-hidden="true"><div className="app-glow" /></div>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Today />} />

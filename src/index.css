@@ -127,6 +127,12 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  overflow-x: hidden; /* 杜绝横向滑出边界 */
+}
+
+html,
+body {
+  overscroll-behavior: none; /* 关闭到边界的橡皮筋回弹/滚动链 */
 }
 
 body {
@@ -186,12 +192,18 @@ a {
   z-index: 1; /* 浮在流动光场之上 */
 }
 
-/* 流动光场：极低对比的径向光，缓慢移动，置于内容之后 */
+/* 流动光场：裁剪容器贴合外壳边界，动画在其内部溢出被裁掉（不影响 sticky 导航的滚动容器） */
+.app-glow-clip {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 .app-glow {
   position: absolute;
   inset: -90px;
-  z-index: 0;
-  pointer-events: none;
   background: var(--glow);
   filter: var(--glow-blur);
   animation: app-flow 12s ease-in-out infinite alternate;
