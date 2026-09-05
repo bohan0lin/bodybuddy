@@ -664,8 +664,8 @@ a {
 }
 
 /* 过去七天 */
-.week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; padding: 14px 8px; }
-.week-day { text-align: center; font-size: 10px; color: var(--text-muted); background: none; display: flex; flex-direction: column; align-items: center; }
+.week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; padding: 14px 8px; }
+.week-day { padding: 0; text-align: center; font-size: 10px; color: var(--text-muted); background: none; display: flex; flex-direction: column; align-items: center; }
 .week-day.today { color: var(--accent); }
 .week-ring-wrap { position: relative; width: 36px; height: 36px; margin: 8px auto 0; display: grid; place-items: center; }
 .week-dumbbell { position: absolute; inset: 0; margin: auto; color: var(--accent); }
