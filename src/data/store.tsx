@@ -1,5 +1,7 @@
+import { toWeight, toMeal, toSaved, toWorkout, toKnowledge, toProfile } from './rows'
+import type { DatabaseUpdate } from '../lib/database'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { GOAL_TYPES, type GoalType, type KnowledgeItem, type Meal, type Profile, type SavedItem, type WeightLog, type Workout } from '../types'
+import { type KnowledgeItem, type Meal, type Profile, type SavedItem, type WeightLog, type Workout } from '../types'
 import { estimateCalories } from '../lib/nutrition'
 import { hasHydrationError, shouldInsertDefaultProfile } from '../lib/hydration'
 import { supabase } from '../lib/supabase'
@@ -27,64 +29,6 @@ interface AppData {
 }
 
 // ── 行 ⇄ 对象映射（数据库 snake_case ⇄ 前端 camelCase）──────────
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const toWeight = (r: any): WeightLog => ({ id: r.id, date: r.date, weight: Number(r.weight), bodyFat: r.body_fat ?? undefined })
-const toMeal = (r: any): Meal => ({
-  id: r.id,
-  date: r.date,
-  type: r.type,
-  name: r.name,
-  brand: r.brand ?? undefined,
-  amount: r.amount ?? undefined,
-  unit: r.unit ?? undefined,
-  protein: Number(r.protein),
-  carbs: Number(r.carbs),
-  fat: Number(r.fat),
-  calories: Number(r.calories),
-  photoUrl: r.photo_url ?? undefined,
-  createdAt: r.created_at,
-})
-const toSaved = (r: any): SavedItem => ({
-  id: r.id,
-  kind: r.kind,
-  name: r.name,
-  brand: r.brand ?? undefined,
-  createdAt: r.created_at ?? undefined,
-  unit: r.unit,
-  baseAmount: Number(r.base_amount),
-  protein: Number(r.protein),
-  carbs: Number(r.carbs),
-  fat: Number(r.fat),
-  calories: Number(r.calories),
-  note: r.note ?? undefined,
-})
-const toWorkout = (r: any): Workout => ({
-  id: r.id,
-  date: r.date,
-  type: r.type,
-  note: r.note ?? undefined,
-  durationMin: Number(r.duration_min),
-  calories: Number(r.calories),
-  createdAt: r.created_at,
-})
-const toKnowledge = (r: any): KnowledgeItem => ({
-  id: r.id,
-  title: r.title,
-  content: r.content,
-  tags: r.tags ?? undefined,
-  createdAt: r.created_at ?? undefined,
-})
-const toProfile = (r: any): Profile => ({
-  displayName: r.display_name,
-  heightCm: Number(r.height_cm),
-  targetProtein: Number(r.target_protein),
-  targetCarbs: Number(r.target_carbs),
-  targetFat: Number(r.target_fat),
-  targetCalories: Number(r.target_calories),
-  goalType: (GOAL_TYPES as string[]).includes(r.goal_type) ? (r.goal_type as GoalType) : undefined,
-})
-/* eslint-enable @typescript-eslint/no-explicit-any */
-
 function uid(): string {
   return crypto.randomUUID()
 }
@@ -132,44 +76,54 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     ;(async () => {
       setLoading(true)
       setHydrationError(false)
-      const [prof, weights, meals, saved, workouts, knowledge] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-        supabase.from('weight_logs').select('*').eq('user_id', userId),
-        supabase.from('meals').select('*').eq('user_id', userId),
-        supabase.from('saved_items').select('*').eq('user_id', userId),
-        supabase.from('workouts').select('*').eq('user_id', userId),
-        supabase.from('knowledge').select('*').eq('user_id', userId),
-      ])
-      if (!alive) return
+      try {
+        const [prof, weights, meals, saved, workouts, knowledge] = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+          supabase.from('weight_logs').select('*').eq('user_id', userId),
+          supabase.from('meals').select('*').eq('user_id', userId),
+          supabase.from('saved_items').select('*').eq('user_id', userId),
+          supabase.from('workouts').select('*').eq('user_id', userId),
+          supabase.from('knowledge').select('*').eq('user_id', userId),
+        ])
+        if (!alive) return
 
-      // 任一查询出错都视为水合失败：不渲染受保护路由、给出重试，绝不把错误当成空数据
-      if (hasHydrationError([prof.error, weights.error, meals.error, saved.error, workouts.error, knowledge.error])) {
-        console.error('store hydration failed', { prof: prof.error, weights: weights.error, meals: meals.error, saved: saved.error, workouts: workouts.error, knowledge: knowledge.error })
+        // 任一查询出错都视为水合失败：不渲染受保护路由、给出重试，绝不把错误当成空数据
+        if (hasHydrationError([prof.error, weights.error, meals.error, saved.error, workouts.error, knowledge.error])) {
+          console.error('store hydration failed', { prof: prof.error, weights: weights.error, meals: meals.error, saved: saved.error, workouts: workouts.error, knowledge: knowledge.error })
+          setHydrationError(true)
+          setLoading(false)
+          return
+        }
+
+        // 仅在「确认无该行」（查询成功且 data 为空）时才创建默认资料
+        let profile = prof.data ? toProfile(prof.data) : DEFAULT_PROFILE
+        if (shouldInsertDefaultProfile(prof)) {
+          const created = await supabase.from('profiles').insert({
+            id: userId, target_protein: 0, target_carbs: 0, target_fat: 0, target_calories: 0,
+          }).select('*').single()
+          if (!alive) return
+          if (created.error || !created.data) throw new Error('Profile creation failed')
+          profile = toProfile(created.data)
+        }
+
+        setData({
+          profile,
+          weightLogs: (weights.data ?? []).map(toWeight),
+          meals: (meals.data ?? []).map(toMeal),
+          savedItems: (saved.data ?? [])
+            .map(toSaved)
+            .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
+          workouts: (workouts.data ?? []).map(toWorkout),
+          knowledgeItems: (knowledge.data ?? [])
+            .map(toKnowledge)
+            .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
+        })
+        setLoading(false)
+      } catch {
+        if (!alive) return
         setHydrationError(true)
         setLoading(false)
-        return
       }
-
-      // 仅在「确认无该行」（查询成功且 data 为空）时才创建默认资料
-      let profile = prof.data ? toProfile(prof.data) : DEFAULT_PROFILE
-      if (shouldInsertDefaultProfile(prof)) {
-        await supabase.from('profiles').insert({ id: userId })
-        profile = DEFAULT_PROFILE
-      }
-
-      setData({
-        profile,
-        weightLogs: (weights.data ?? []).map(toWeight),
-        meals: (meals.data ?? []).map(toMeal),
-        savedItems: (saved.data ?? [])
-          .map(toSaved)
-          .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
-        workouts: (workouts.data ?? []).map(toWorkout),
-        knowledgeItems: (knowledge.data ?? [])
-          .map(toKnowledge)
-          .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
-      })
-      setLoading(false)
     })()
     return () => {
       alive = false
@@ -209,7 +163,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
 
       updateMeal: (id, patch) => {
         setData((d) => ({ ...d, meals: d.meals.map((x) => (x.id === id ? { ...x, ...patch } : x)) }))
-        const row: Record<string, unknown> = {}
+        const row: DatabaseUpdate<'meals'> = {}
         if (patch.date !== undefined) row.date = patch.date
         if (patch.type !== undefined) row.type = patch.type
         if (patch.name !== undefined) row.name = patch.name
@@ -254,7 +208,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
           prevProfile = d.profile
           return { ...d, profile: { ...d.profile, ...p } }
         })
-        const patch: Record<string, unknown> = {}
+        const patch: DatabaseUpdate<'profiles'> = {}
         if (p.displayName !== undefined) patch.display_name = p.displayName
         if (p.heightCm !== undefined) patch.height_cm = p.heightCm
         if (p.targetProtein !== undefined) patch.target_protein = p.targetProtein
@@ -323,7 +277,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
           ...d,
           savedItems: d.savedItems.map((x) => (x.id === id ? { ...x, ...patch } : x)),
         }))
-        const row: Record<string, unknown> = {}
+        const row: DatabaseUpdate<'saved_items'> = {}
         if (patch.kind !== undefined) row.kind = patch.kind
         if (patch.name !== undefined) row.name = patch.name
         if (patch.brand !== undefined) row.brand = patch.brand || null
@@ -361,7 +315,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
 
       updateWorkout: (id, patch) => {
         setData((d) => ({ ...d, workouts: d.workouts.map((x) => (x.id === id ? { ...x, ...patch } : x)) }))
-        const row: Record<string, unknown> = {}
+        const row: DatabaseUpdate<'workouts'> = {}
         if (patch.date !== undefined) row.date = patch.date
         if (patch.type !== undefined) row.type = patch.type
         if (patch.note !== undefined) row.note = patch.note || null

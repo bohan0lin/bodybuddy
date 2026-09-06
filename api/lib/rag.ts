@@ -1,6 +1,8 @@
 import { embedMany } from 'ai'
 import { google } from '@ai-sdk/google'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { foodMatchSchema } from './contracts.js'
+import type { Database } from '../../src/lib/database.types.js'
 
 export interface FoodMatch {
   query: string
@@ -20,12 +22,12 @@ export interface FoodMatch {
 const THRESHOLD = 0.45
 
 // 懒加载 Supabase 客户端；环境变量缺失时返回 null（绝不在模块加载期抛错）
-let _sb: SupabaseClient | null | undefined
-function getClient(): SupabaseClient | null {
+let _sb: SupabaseClient<Database> | null | undefined
+function getClient(): SupabaseClient<Database> | null {
   if (_sb !== undefined) return _sb
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || ''
   const anon = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
-  _sb = url && anon ? createClient(url, anon, { auth: { persistSession: false } }) : null
+  _sb = url && anon ? createClient<Database>(url, anon, { auth: { persistSession: false } }) : null
   return _sb
 }
 
@@ -46,11 +48,10 @@ export async function lookupFoods(names: string[]): Promise<(FoodMatch | null)[]
 
     const one = async (emb: number[], query: string): Promise<FoodMatch | null> => {
       if (!query) return null
-      const { data, error } = await sb.rpc('match_foods', { query_embedding: emb, match_count: 1 })
+      const { data, error } = await sb.rpc('match_foods', { query_embedding: JSON.stringify(emb), match_count: 1 })
       if (error || !data || !data.length) return null
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const m = data[0] as any
-      return {
+      const m = data[0]
+      return foodMatchSchema.parse({
         query,
         matched: Number(m.distance) <= THRESHOLD,
         name: m.name,
@@ -62,12 +63,11 @@ export async function lookupFoods(names: string[]): Promise<(FoodMatch | null)[]
         fat: Number(m.fat),
         calories: Number(m.calories),
         distance: Number(m.distance),
-      }
+      })
     }
 
     return await Promise.all(embeddings.map((emb, i) => one(emb as number[], cleaned[i])))
-  } catch (e) {
-    console.error('lookupFoods failed', e)
+  } catch {
     return empty
   }
 }

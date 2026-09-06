@@ -1,13 +1,6 @@
 import { generateObject } from 'ai'
-import { z } from 'zod'
+import { knowledgeSchema as schema } from './contracts.js'
 import { MODEL } from './ai.js'
-
-const schema = z.object({
-  relevant: z.boolean().describe('这段话是否包含健身/营养/训练相关的知识'),
-  title: z.string().describe('简短主题，10 字左右'),
-  content: z.string().describe('整理后的知识正文，简洁清晰、成句'),
-  tags: z.string().describe('逗号分隔的标签，便于日后归类'),
-})
 
 // 把用户口述/粗糙的一段话，整理成一条干净的健身/营养知识
 export async function tidyKnowledge(

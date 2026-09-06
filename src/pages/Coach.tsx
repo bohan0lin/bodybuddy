@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useStore } from '../data/store'
-import { dateOffset, macrosByDate, sumMacros, todayStr } from '../lib/nutrition'
+import { todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
-import { finalizeVoiceState, type VoiceState } from '../lib/voice'
+import { createVoiceController, type VoiceState } from '../lib/voice'
 import AppIcon from '../components/AppIcon'
 import type { MealType } from '../types'
 
@@ -44,7 +44,7 @@ interface Msg {
 
 // AI 教练：整屏对话页（原悬浮助手改造而来）
 export default function Coach() {
-  const { profile, meals, savedItems, latestWeight, workouts, knowledgeItems, addMeal, addSavedItem, addWorkout } = useStore()
+  const { addMeal, addSavedItem, addWorkout } = useStore()
   const { t, lang } = useT()
   const kcalLabel = t('today.kcal')
 
@@ -60,21 +60,25 @@ export default function Coach() {
   const fileRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null)
+  const voice = useMemo(() => createVoiceController(setVoiceState, (transcript) => {
+    const prefix = voiceMeal ? t('coach.voiceMealPrefix') : ''
+    setInput((prev) => prev ? prev + ' ' + transcript : prefix + transcript)
+  }), [voiceMeal, t])
 
   // 语音入口不支持时聚焦文本框；卸载时停止识别
   useEffect(() => {
+    // The recognition controller was replaced (e.g. language changed); synchronize its idle state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setVoiceState('idle')
     if (voiceMeal && !voiceSupported) inputRef.current?.focus()
     return () => {
-      try { recognitionRef.current?.stop() } catch { /* ignore */ }
+      voice.dispose()
     }
-  }, [voiceMeal, voiceSupported])
+  }, [voiceMeal, voiceSupported, voice])
 
   function toggleVoice() {
     if (voiceState === 'listening') {
-      try { recognitionRef.current?.stop() } catch { /* ignore */ }
-      setVoiceState('processing')
+      voice.stop()
       return
     }
     const SR = getSpeechRecognition()
@@ -84,54 +88,11 @@ export default function Coach() {
       rec.lang = lang === 'zh' ? 'zh-CN' : 'en-US'
       rec.interimResults = false
       rec.continuous = false
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rec.onresult = (e: any) => {
-        const transcript = e?.results?.[0]?.[0]?.transcript ?? ''
-        const prefix = voiceMeal ? t('coach.voiceMealPrefix') : ''
-        setInput((prev) => (voiceMeal ? prefix + transcript : (prev ? prev + ' ' : '') + transcript))
-        setVoiceState('idle')
-        requestAnimationFrame(() => inputRef.current?.focus())
-      }
-      rec.onerror = () => setVoiceState('error')
-      rec.onend = () => setVoiceState(finalizeVoiceState)
-      recognitionRef.current = rec
-      setVoiceState('listening')
-      rec.start()
+      voice.start(rec)
     } catch {
       setVoiceState('error')
     }
   }
-
-  const context = useMemo(() => {
-    const today = todayStr()
-    const todayMeals = meals.filter((m) => m.date === today)
-    const byDate = macrosByDate(meals)
-    const recentDays = Array.from({ length: 7 }, (_, i) => {
-      const d = dateOffset(i - 6)
-      const mm = byDate.get(d) ?? { protein: 0, carbs: 0, fat: 0, calories: 0 }
-      return { date: d, calories: Math.round(mm.calories), protein: Math.round(mm.protein), carbs: Math.round(mm.carbs), fat: Math.round(mm.fat) }
-    })
-    const wkLabel = (k: string) => t(('workout.type.' + k) as 'workout.type.strength')
-    const since = dateOffset(-6)
-    const todayWorkouts = workouts.filter((w) => w.date === today).map((w) => ({ type: wkLabel(w.type), note: w.note, durationMin: w.durationMin, calories: w.calories }))
-    const recentWorkouts = workouts
-      .filter((w) => w.date >= since)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map((w) => ({ date: w.date, type: wkLabel(w.type), durationMin: w.durationMin, calories: w.calories }))
-    return {
-      targets: { protein: profile.targetProtein, carbs: profile.targetCarbs, fat: profile.targetFat, calories: profile.targetCalories },
-      consumed: sumMacros(todayMeals),
-      todayMeals: todayMeals.map((m) => ({ name: m.name, type: m.type })),
-      todayWorkouts,
-      recentDays,
-      recentWorkouts,
-      savedItems: savedItems.map((s) => ({ kind: s.kind, name: s.name, brand: s.brand, unit: s.unit, baseAmount: s.baseAmount, protein: s.protein, carbs: s.carbs, fat: s.fat, calories: s.calories })),
-      knowledge: knowledgeItems.map((k) => ({ title: k.title, content: k.content, tags: k.tags })),
-      latestWeight: latestWeight ? { weight: latestWeight.weight, bodyFat: latestWeight.bodyFat } : undefined,
-      hour: new Date().getHours(),
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, meals, savedItems, latestWeight, workouts, knowledgeItems, lang])
 
   function scrollDown() {
     requestAnimationFrame(() => {
@@ -159,8 +120,9 @@ export default function Coach() {
     setLoading(true)
     scrollDown()
     try {
-      const payloadMsgs = history.map((m, i) => ({ role: m.role, text: m.text, image: i === history.length - 1 ? m.image : undefined }))
-      const res = await postJson<{ reply: string; actions: Action[] }>('/api/assistant', { messages: payloadMsgs, context, lang })
+      const recent = history.slice(-39)
+      const payloadMsgs = recent.map((m, i) => ({ role: m.role, text: m.text, image: i === recent.length - 1 ? m.image : undefined }))
+      const res = await postJson<{ reply: string; actions: Action[] }>('/api/assistant', { messages: payloadMsgs, date: todayStr(), hour: new Date().getHours(), lang })
       setMessages((ms) => [...ms, { role: 'assistant', text: res.reply, actions: res.actions ?? [], done: {} }])
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''

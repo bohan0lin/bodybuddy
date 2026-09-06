@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from './database.types'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -7,4 +8,4 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const isConfigured = Boolean(url && anonKey)
 
 // 未配置时用占位值创建，避免 import 阶段抛错；实际调用被 isConfigured 拦住
-export const supabase = createClient(url || 'https://placeholder.supabase.co', anonKey || 'placeholder')
+export const supabase = createClient<Database>(url || 'https://placeholder.supabase.co', anonKey || 'placeholder')

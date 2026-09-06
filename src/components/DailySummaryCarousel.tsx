@@ -119,7 +119,7 @@ export default function DailySummaryCarousel({ targets, consumed, todayWorkouts,
     <div className="workout-empty">
       <div className="hero-label">{t('today.workout')}</div>
       <div className="hero-value num" style={{ fontSize: 24, letterSpacing: '-0.02em' }}>{t('today.noWorkout')}</div>
-      <button className="btn btn-accent" type="button" onClick={onLogWorkout}>{t('nav.logWorkout')}</button>
+      <button className="btn btn-accent" type="button" tabIndex={top === 1 ? 0 : -1} disabled={top !== 1} onClick={onLogWorkout}>{t('nav.logWorkout')}</button>
     </div>
   )
 
