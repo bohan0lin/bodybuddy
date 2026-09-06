@@ -6,7 +6,7 @@ import { ApiError, sendError, type ApiResponse } from './http.js'
 export async function apiMiddleware(req: IncomingMessage, res: ServerResponse, next: () => void) {
   const route = (req.url ?? '').split('?')[0]
   const name = route.slice('/api/'.length)
-  if (!route.startsWith('/api/') || !Object.hasOwn(requests, name)) return next()
+  if (!route.startsWith('/api/') || !Object.prototype.hasOwnProperty.call(requests, name)) return next()
   const response: ApiResponse = {
     setHeader: (key, value) => res.setHeader(key, value),
     status(code) { res.statusCode = code; return response },
