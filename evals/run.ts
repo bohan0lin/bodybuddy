@@ -60,7 +60,7 @@ function printSuite(title: string, rows: Row[]): number | null {
 }
 
 async function runLookup(): Promise<number | null> {
-  const { lookupFoods } = await import('../api/lib/rag')
+  const { lookupFoods } = await import('../api/_lib/rag')
   const rows: Row[] = []
   for (const c of lookupCases) {
     try {
@@ -84,7 +84,7 @@ async function runLookup(): Promise<number | null> {
 }
 
 async function runAssistant(): Promise<number | null> {
-  const { assistantChat } = await import('../api/lib/assistant')
+  const { assistantChat } = await import('../api/_lib/assistant')
   const rows: Row[] = []
   for (const c of assistantCases) {
     try {

@@ -6,6 +6,10 @@ import type { Endpoint } from './contracts.js'
 import { apiMiddleware } from './dev.js'
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { ApiError } from './http.js'
+import { reserveRequest } from './limits.js'
+
+vi.mock('./limits.js', () => ({ reserveRequest: vi.fn() }))
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), createClient: vi.fn(), context: vi.fn(), assistant: vi.fn(), suggest: vi.fn(), recognize: vi.fn(), lookup: vi.fn(), knowledge: vi.fn() }))
 vi.mock('@supabase/supabase-js', () => ({ createClient: mocks.createClient }))
@@ -36,6 +40,7 @@ async function call(endpoint: Endpoint, authorization: string | string[] | undef
 }
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(reserveRequest).mockResolvedValue(undefined)
   vi.stubEnv('SUPABASE_URL', 'https://test.supabase.co')
   vi.stubEnv('SUPABASE_ANON_KEY', 'test-public-key')
   mocks.createClient.mockReturnValue({ auth: { getUser: mocks.getUser } })
@@ -68,9 +73,9 @@ describe('all paid endpoint contracts', () => {
   it('uses verified identity and a fresh token-scoped client', async () => {
     expect((await call('assistant')).statusCode).toBe(200)
     expect(mocks.getUser).toHaveBeenCalledWith(token)
-    expect(mocks.createClient).toHaveBeenCalledWith('https://test.supabase.co', 'test-public-key', expect.objectContaining({ global: { headers: { Authorization: `Bearer ${token}` } } }))
+    expect(mocks.createClient).toHaveBeenCalledWith('https://test.supabase.co', 'test-public-key', expect.objectContaining({ global: expect.objectContaining({ headers: { Authorization: `Bearer ${token}` } }) }))
     expect(mocks.context).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-a' }), clock.date, clock.hour)
-    expect(mocks.assistant).toHaveBeenCalledWith(expect.objectContaining({ context }))
+    expect(mocks.assistant).toHaveBeenCalledWith(expect.objectContaining({ context }), expect.any(AbortSignal))
   })
   it.each([{ userId: 'user-b' }, { context: { userId: 'user-b', targets: zero } }])('rejects client identity/context injection', async (extra) => {
     expect((await call('assistant', `Bearer ${token}`, { ...(bodies.assistant as object), ...extra })).statusCode).toBe(400)
@@ -114,7 +119,7 @@ describe('all paid endpoint contracts', () => {
   it('the development adapter enforces the same auth boundary', async () => {
     const req = Object.assign(Readable.from([JSON.stringify(bodies.knowledge)]), { url: '/api/knowledge', method: 'POST', headers: { 'content-type': 'application/json' } }) as unknown as IncomingMessage
     const end = vi.fn()
-    const res = { setHeader: vi.fn(), end, statusCode: 0 } as unknown as ServerResponse
+    const res = { setHeader: vi.fn(), end, statusCode: 0, once: vi.fn(), off: vi.fn() } as unknown as ServerResponse
     const next = vi.fn()
     await apiMiddleware(req, res, next)
     expect(res.statusCode).toBe(401)
@@ -127,5 +132,29 @@ describe('all paid endpoint contracts', () => {
     const next = vi.fn()
     await apiMiddleware(req, {} as ServerResponse, next)
     expect(next).toHaveBeenCalledOnce()
+  })
+  it('returns retry hints and never calls models when the budget is exhausted', async () => {
+    const denied = new ApiError(429, 'RATE_LIMITED', 'Please retry later.')
+    denied.retryAfter = 40
+    vi.mocked(reserveRequest).mockRejectedValue(denied)
+    const result = await call('knowledge')
+    expect(result.statusCode).toBe(429)
+    expect(result.headers['Retry-After']).toBe('40')
+    expect(mocks.knowledge).not.toHaveBeenCalled()
+  })
+  it('validates malformed input before reserving quota', async () => {
+    await call('knowledge', `Bearer ${token}`, { text: '' })
+    expect(reserveRequest).not.toHaveBeenCalled()
+  })
+  it('returns a timeout and aborts the model signal when the provider stalls', async () => {
+    vi.useFakeTimers()
+    try {
+      mocks.knowledge.mockReturnValue(new Promise(() => {}))
+      const pending = call('knowledge')
+      await vi.advanceTimersByTimeAsync(45_000)
+      expect((await pending).statusCode).toBe(504)
+      expect(mocks.knowledge.mock.calls[0][2].aborted).toBe(true)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally { vi.useRealTimers() }
   })
 })

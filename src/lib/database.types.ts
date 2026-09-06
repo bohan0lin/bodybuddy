@@ -296,6 +296,15 @@ export type Database = {
           unit: string
         }[]
       }
+      reserve_ai_request: {
+        Args: {
+          p_endpoint: string
+          p_image?: boolean
+          p_ip_hash: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

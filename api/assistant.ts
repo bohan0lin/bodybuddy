@@ -1,4 +1,4 @@
-import { createEndpoint } from './lib/endpoint.js'
+import { createEndpoint } from './_lib/endpoint.js'
 
 export const maxDuration = 60
 export default createEndpoint('assistant')

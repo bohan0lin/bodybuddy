@@ -14,7 +14,7 @@ it('attaches current token and cancellation signal', async () => {
   fetchMock.mockResolvedValue(new Response(JSON.stringify({ match: null })))
   const controller = new AbortController()
   await postJson('/api/lookup', { name: 'rice' }, controller.signal)
-  expect(fetchMock).toHaveBeenCalledWith('/api/lookup', expect.objectContaining({ headers: { 'content-type': 'application/json', Authorization: 'Bearer test-token' }, signal: controller.signal, redirect: 'error' }))
+  expect(fetchMock).toHaveBeenCalledWith('/api/lookup', expect.objectContaining({ headers: { 'content-type': 'application/json', Authorization: 'Bearer test-token' }, signal: expect.any(AbortSignal), redirect: 'error' }))
 })
 it('never sends a token to another origin', async () => {
   await expect(postJson('https://elsewhere.test/api/lookup', {})).rejects.toThrow('Invalid API endpoint')
@@ -32,4 +32,15 @@ it('preserves safe error code and request ID', async () => {
 it('rejects malformed successful output before rendering', async () => {
   fetchMock.mockResolvedValue(new Response(JSON.stringify({ reply: 'hi', actions: [{ type: 'delete-account' }] })))
   await expect(postJson('/api/assistant', {})).rejects.toMatchObject({ code: 'INVALID_MODEL_RESPONSE' })
+})
+it('propagates cancellation to the request and exposes retry delays', async () => {
+  const external = new AbortController()
+  fetchMock.mockImplementation((_url, init) => new Promise((_resolve, reject) => init.signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true })))
+  const pending = postJson('/api/lookup', { name: 'rice' }, external.signal)
+  const assertion = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
+  external.abort()
+  await assertion
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: { code: 'RATE_LIMITED', message: 'Please retry', requestId: 'r2' } }), { status: 429, headers: { 'Retry-After': '30' } }))
+  await expect(postJson('/api/lookup', { name: 'rice' })).rejects.toMatchObject({ retryAfter: 30, status: 429 })
 })

@@ -41,7 +41,7 @@ export interface SuggestInput {
 }
 
 // ── 饮食建议 ────────────────────────────────────────────────
-export async function suggestMeal(input: SuggestInput): Promise<{ text: string }> {
+export async function suggestMeal(input: SuggestInput, abortSignal?: AbortSignal): Promise<{ text: string }> {
   const rem: Macros = {
     protein: Math.max(0, Math.round(input.targets.protein - input.consumed.protein)),
     carbs: Math.max(0, Math.round(input.targets.carbs - input.consumed.carbs)),
@@ -90,7 +90,7 @@ ${commonRules}
 今天已吃：${input.meals.map((m) => m.name).join('、') || '还没吃'}
 当前时间：${input.hour} 点${libraryBlock}`
 
-  const { text } = await generateText({ model: MODEL, system, prompt, maxRetries: 3 })
+  const { text } = await generateText({ model: MODEL, system, prompt, maxRetries: 0, maxOutputTokens: 2048, abortSignal })
   return { text: text.trim() }
 }
 
@@ -109,6 +109,7 @@ export async function recognizeFood(
   imageBase64: string,
   mediaType: string,
   lang?: 'zh' | 'en',
+  abortSignal?: AbortSignal,
 ): Promise<{ items: RecognizedItem[] }> {
   const dataUrl = `data:${mediaType || 'image/jpeg'};base64,${imageBase64}`
   const nameRule =
@@ -127,7 +128,9 @@ ${nameRule}
     model: MODEL,
     schema: recogSchema,
     system,
-    maxRetries: 3,
+    maxRetries: 0,
+    maxOutputTokens: 2048,
+    abortSignal,
     messages: [
       {
         role: 'user',
@@ -142,7 +145,7 @@ ${nameRule}
   // RAG 校准：命中营养库且为重量单位时，用库里的精准值按分量换算覆盖模型估算
   let items = object.items
   try {
-    const matches = await lookupFoods(items.map((it) => it.name))
+    const matches = await lookupFoods(items.map((it) => it.name), abortSignal)
     const r1 = (n: number) => Math.round(n * 10) / 10
     items = items.map((it, i) => {
       const m = matches[i]

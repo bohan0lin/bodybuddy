@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../../src/lib/database.types.js'
 import { ApiError, type ApiRequest } from './http.js'
 
-export async function authenticate(headers: ApiRequest['headers']) {
+export async function authenticate(headers: ApiRequest['headers'], signal?: AbortSignal) {
   const header = headers.authorization
   if (typeof header !== 'string' || header.length > 8192 || !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/i.test(header)) {
     throw new ApiError(401, 'UNAUTHORIZED', 'Please sign in again.')
@@ -14,7 +14,7 @@ export async function authenticate(headers: ApiRequest['headers']) {
   // Per-request client with the user's token: RLS remains in force. Never use a service-role key.
   const db = createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
+    global: { headers: { Authorization: `Bearer ${token}` }, fetch: (input, init) => fetch(input, { ...init, signal }) },
   })
   let result: Awaited<ReturnType<typeof db.auth.getUser>>
   try { result = await db.auth.getUser(token) } catch { throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Service temporarily unavailable.') }

@@ -54,6 +54,12 @@ API-boundary implementation is now present; see [API trust boundary](./API_TRUST
 for contracts, tests and rollout limitations. Live auth/RLS and staging journeys
 remain unverified. Other P1 phases below are still pending.
 
+Local database migrations, generated types and integration tests have passed.
+P1.2 limits and deadlines are now implemented; see [AI request limits](./AI_REQUEST_LIMITS.md)
+for required deployment configuration. Remote rollout and hosted CI are not
+implied by the local verification results. The sequence below remains the overall
+plan; completed implementation must still satisfy its external acceptance checks.
+
 1. **API boundary (P1.1/P1.3):** share auth, request/response schemas and safe errors
    between Vercel and Vite; verify Supabase tokens; derive identity server-side;
    test invalid tokens and cross-user context access across all five endpoints.

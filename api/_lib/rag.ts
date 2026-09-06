@@ -32,7 +32,7 @@ function getClient(): SupabaseClient<Database> | null {
 }
 
 // 返回与 names 等长的匹配结果；任何异常/未配置/无数据都返回 null（调用方保留原估算）
-export async function lookupFoods(names: string[]): Promise<(FoodMatch | null)[]> {
+export async function lookupFoods(names: string[], abortSignal?: AbortSignal): Promise<(FoodMatch | null)[]> {
   const empty = names.map(() => null)
   const cleaned = names.map((n) => (n || '').trim())
   const hasQuery = cleaned.some(Boolean)
@@ -41,6 +41,8 @@ export async function lookupFoods(names: string[]): Promise<(FoodMatch | null)[]
 
   try {
     const { embeddings } = await embedMany({
+      abortSignal,
+      maxRetries: 0,
       model: google.textEmbedding('gemini-embedding-001'),
       values: cleaned.map((n) => n || ' '),
       providerOptions: { google: { outputDimensionality: 768, taskType: 'RETRIEVAL_QUERY' } },
@@ -48,7 +50,8 @@ export async function lookupFoods(names: string[]): Promise<(FoodMatch | null)[]
 
     const one = async (emb: number[], query: string): Promise<FoodMatch | null> => {
       if (!query) return null
-      const { data, error } = await sb.rpc('match_foods', { query_embedding: JSON.stringify(emb), match_count: 1 })
+      const rpcQuery = sb.rpc('match_foods', { query_embedding: JSON.stringify(emb), match_count: 1 })
+      const { data, error } = await (abortSignal ? rpcQuery.abortSignal(abortSignal) : rpcQuery)
       if (error || !data || !data.length) return null
       const m = data[0]
       return foodMatchSchema.parse({

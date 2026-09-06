@@ -67,7 +67,8 @@ together. Older cached clients will fail closed until updated. No deployment was
 performed as part of this change. Verify signed-in browser flows against staging,
 and actual RLS using disposable integration tests before production release.
 
-Next: migration/type-generation/Database CI foundation; atomic per-user/IP limits
-and daily model budgets; complete timeout/cancellation propagation; reliable
-mutations; full health-safety/privacy work; staging E2E and budgeted model evals.
-Authentication and body limits alone do not prevent authenticated quota abuse.
+Atomic per-user/IP limits, daily model-call reservations and timeout/cancellation
+propagation are implemented in [AI request limits](./AI_REQUEST_LIMITS.md).
+Their migration and server environment variable must be configured before rollout.
+Next: reliable mutations, full health-safety/privacy work, staging E2E and budgeted
+model evals. Hosted CI and deployment remain separate acceptance checks.

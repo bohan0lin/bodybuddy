@@ -1,4 +1,4 @@
-import { apiMiddleware } from './api/lib/dev.js'
+import { apiMiddleware } from './api/_lib/dev.js'
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
   if (env.VITE_SUPABASE_ANON_KEY) process.env.VITE_SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY
   if (env.SUPABASE_URL) process.env.SUPABASE_URL = env.SUPABASE_URL
   if (env.SUPABASE_ANON_KEY) process.env.SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY
+  if (env.SUPABASE_SERVICE_ROLE_KEY) process.env.SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY
 
   return {
     plugins: [

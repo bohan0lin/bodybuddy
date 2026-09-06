@@ -6,12 +6,13 @@ import { MODEL } from './ai.js'
 export async function tidyKnowledge(
   text: string,
   lang?: 'zh' | 'en',
+  abortSignal?: AbortSignal,
 ): Promise<{ relevant: boolean; title: string; content: string; tags: string }> {
   const isEn = lang === 'en'
   const system = isEn
     ? 'Turn the user\'s spoken/rough note into ONE clean fitness/nutrition knowledge entry. Keep only fitness/diet/training substance, fix grammar, be concise and factual. If there is no fitness/nutrition knowledge, set relevant=false and leave the rest brief.'
     : '把用户口述/粗糙的一段话，整理成一条干净的健身/营养知识条目。只保留健身/饮食/训练相关的干货，修正语病，简洁、成句、准确。若这段话里没有健身营养知识，relevant 设为 false，其余留简短即可。'
 
-  const { object } = await generateObject({ model: MODEL, schema, system, prompt: text || ' ', maxRetries: 3 })
+  const { object } = await generateObject({ model: MODEL, schema, system, prompt: text || ' ', maxRetries: 0, maxOutputTokens: 2048, abortSignal })
   return object
 }
