@@ -5,6 +5,7 @@ import { useAuth } from './data/auth'
 import { StoreProvider, useStore } from './data/store'
 import { useT } from './lib/i18n'
 import BottomNav from './components/BottomNav'
+import { trackAppViewport } from './lib/appViewport'
 import Today from './pages/Today'
 import Login from './pages/Login'
 
@@ -79,13 +80,17 @@ function AuthedApp() {
   const { loading, hydrationError, reload } = useStore()
   const { pathname } = useLocation()
   const contentRef = useRef<HTMLElement>(null)
+  const shellRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (shellRef.current) return trackAppViewport(shellRef.current)
+  }, [loading, hydrationError])
   useLayoutEffect(() => {
     if (contentRef.current) contentRef.current.scrollTop = 0
   }, [pathname])
   if (loading) return <Splash text="BodyBuddy" />
   if (hydrationError) return <HydrationError onRetry={reload} />
   return (
-    <div className="app-shell app-shell-authed">
+    <div className="app-shell app-shell-authed" ref={shellRef}>
       <div className="app-glow-clip" aria-hidden="true"><div className="app-glow" /></div>
       <main className="app-content" ref={contentRef}>
         <Suspense fallback={<RouteFallback />}>
