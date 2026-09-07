@@ -1,6 +1,7 @@
 name: Database CI
 
 on:
+  workflow_call:
   pull_request:
   push:
     branches: [main, redesign]
@@ -9,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: database-${{ github.ref }}
+  group: database-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

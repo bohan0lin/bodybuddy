@@ -180,6 +180,7 @@ export type Database = {
           kind: string
           name: string
           note: string | null
+          photo_url: string | null
           protein: number
           unit: string
           user_id: string
@@ -195,6 +196,7 @@ export type Database = {
           kind: string
           name: string
           note?: string | null
+          photo_url?: string | null
           protein?: number
           unit?: string
           user_id: string
@@ -210,6 +212,7 @@ export type Database = {
           kind?: string
           name?: string
           note?: string | null
+          photo_url?: string | null
           protein?: number
           unit?: string
           user_id?: string
@@ -295,6 +298,10 @@ export type Database = {
           protein: number
           unit: string
         }[]
+      }
+      record_food_entry: {
+        Args: { p_favorite?: boolean; p_id: string; p_meal: Json }
+        Returns: undefined
       }
       reserve_ai_request: {
         Args: {
