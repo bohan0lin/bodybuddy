@@ -8,6 +8,7 @@ import { fileToResizedBase64 } from '../lib/image'
 import { peekPendingPhoto, takePendingPhoto } from '../lib/photoHandoff'
 import { combineFoods, recordFoodEntry, scaleFood, uploadFoodPhoto, type FoodDraft } from '../lib/foodEntry'
 import { supabase } from '../lib/supabase'
+import AppIcon from '../components/AppIcon'
 import FoodPhoto from '../components/FoodPhoto'
 import { MEAL_TYPES, type Meal, type MealType, type SavedItem } from '../types'
 
@@ -71,7 +72,7 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
       }} />
       <button className="btn" disabled={busy} onClick={() => photoInput.current?.click()}>{zh ? '更换收藏封面' : 'Change favorite photo'}</button>
     </>}
-    <div className="card food-summary">
+    <div className="float-card food-summary">
       <p className="eyebrow">{editSaved ? (zh ? '收藏食物' : 'FAVORITE FOOD') : (zh ? '确认这一餐' : 'REVIEW YOUR MEAL')}</p>
       <h2>{food.name || (zh ? '填写食物信息' : 'Add food details')}</h2>
       <label className="food-amount">{zh ? '份量' : 'Amount'}
@@ -88,11 +89,11 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
       className={`chip${mt === type ? ' active' : ''}`} onClick={() => setType(mt)}>{t(`meal.${mt}`)}</button>)}</div>}
     {calibrating && <fieldset className="card food-calibration" disabled={busy}>
       <legend>{zh ? '校准营养数据' : 'Calibrate nutrition'}</legend>
-      <label className="field">{zh ? '食物名称' : 'Food name'}<input value={food.name} maxLength={200} onChange={(e) => setFood({ ...food, name: e.target.value })} /></label>
-      <label className="field">{zh ? '品牌（可选）' : 'Brand (optional)'}<input value={food.brand ?? ''} onChange={(e) => setFood({ ...food, brand: e.target.value })} /></label>
-      <label className="field">{zh ? '单位' : 'Unit'}<input value={food.unit} maxLength={30} onChange={(e) => setFood({ ...food, unit: e.target.value })} /></label>
+      <label className="field"><span>{zh ? '食物名称' : 'Food name'}</span><input value={food.name} maxLength={200} onChange={(e) => setFood({ ...food, name: e.target.value })} /></label>
+      <label className="field"><span>{zh ? '品牌（可选）' : 'Brand (optional)'}</span><input value={food.brand ?? ''} onChange={(e) => setFood({ ...food, brand: e.target.value })} /></label>
+      <label className="field"><span>{zh ? '单位' : 'Unit'}</span><input value={food.unit} maxLength={30} onChange={(e) => setFood({ ...food, unit: e.target.value })} /></label>
       <div className="food-calibration-grid">{(['calories', 'carbs', 'protein', 'fat'] as const).map((key) => <label className="field" key={key}>
-        {key === 'calories' ? (zh ? '热量 (kcal)' : 'Calories (kcal)') : `${t(`macro.${key}`)} (g)`}
+        <span>{key === 'calories' ? (zh ? '热量 (kcal)' : 'Calories (kcal)') : `${t(`macro.${key}`)} (g)`}</span>
         <input type="number" min="0" step="any" value={food[key]} onChange={(e) => setFood({ ...food, [key]: Number(e.target.value) })} />
       </label>)}</div>
       <button className="btn" disabled={!valid} onClick={() => { setBase(food); setCalibrating(false) }}>{zh ? '保存校准' : 'Apply calibration'}</button>
@@ -100,9 +101,9 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
     {!editSaved && <label className="food-favorite"><input type="checkbox" checked={favorite} disabled={busy} onChange={(e) => setFavorite(e.target.checked)} />
       {zh ? '保存到快捷食物' : 'Save to favorites'}{cover ? (zh ? '（包含照片）' : ' with photo') : ''}</label>}
     {error && <p role="alert" className="food-error">{error}</p>}
-    <div className="row food-actions">
-      <button className="btn" disabled={busy} onClick={() => setCalibrating(true)}>{zh ? '校准' : 'Calibrate'}</button>
+    <div className="food-actions">
       <button className="btn btn-primary" disabled={busy || !valid || calibrating} onClick={save}>{busy ? (zh ? '保存中…' : 'Saving…') : editSaved || editMeal ? (zh ? '保存修改' : 'Save changes') : (zh ? '记录' : 'Log meal')}</button>
+      <button className="btn" disabled={busy} onClick={() => setCalibrating(true)}>{zh ? '校准' : 'Calibrate'}</button>
     </div>
     <button className="btn-ghost food-back" disabled={busy} onClick={onCancel}>{t('common.cancel')}</button>
     {editSaved && <button className="btn-ghost food-back" disabled={busy} onClick={async () => {
@@ -164,23 +165,24 @@ export default function LogMeal() {
   const initial = edit ? { ...edit, amount: edit.amount ?? 1, unit: edit.unit ?? 'serving' }
     : picked ? { ...picked, amount: picked.baseAmount } : result
   const matches = savedItems.filter((s) => `${s.name} ${s.brand ?? ''}`.toLowerCase().includes(query.trim().toLowerCase()))
-  return <div className="page food-entry-page">
-    <header className="food-entry-header"><button className="btn-ghost" onClick={done}>‹ {zh ? '返回' : 'Back'}</button>
-      <h1>{edit ? (zh ? '编辑记录' : 'Edit meal') : photoMode ? (zh ? '拍照识别' : 'Photo log') : (zh ? '快捷输入' : 'Quick entry')}</h1></header>
-    {state?.logDate && <p className="muted">{state.logDate}</p>}
+  return <div className={`page food-entry-page${photoMode ? ' photo' : ''}`}>
+    <header className="food-entry-header"><button className="btn-ghost" onClick={done}>‹ {zh ? '返回' : 'Back'}</button></header>
+    <h1 className="food-entry-title">{edit ? (zh ? '编辑记录' : 'Edit meal') : photoMode ? (zh ? '拍照识别' : 'Photo log') : (zh ? '快捷输入' : 'Quick entry')}</h1>
+    {state?.logDate && <p className="food-entry-date">{state.logDate}</p>}
     {photoMode && <>
       <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setFile(f) }} />
-      {!result && photo && <FoodPhoto path={photo} alt={zh ? '食物照片' : 'Food photo'} className="food-hero" />}
-      {!file && <div className="card empty"><p>{zh ? '拍下这一餐，确认营养后记录。' : 'Photograph your meal, review its nutrition, then log it.'}</p></div>}
-      <button className="btn" disabled={busy} onClick={() => input.current?.click()}>{file ? (zh ? '重拍 / 换图' : 'Retake / choose another') : (zh ? '拍照 / 选择照片' : 'Take / choose photo')}</button>
+      {!result && photo && <FoodPhoto path={photo} alt={zh ? '食物照片' : 'Food photo'} className={`food-hero${busy ? ' loading' : ''}`} />}
+      {!file && <div className="food-drop"><span className="capture-icon"><AppIcon name="camera" size={22} /></span>
+        <p>{zh ? '拍下这一餐，确认营养后记录。' : 'Photograph your meal, review its nutrition, then log it.'}</p></div>}
       {busy && <p role="status" className="food-status">{zh ? '正在识别食物与营养…' : 'Recognizing food and nutrition…'}</p>}
-      {error && <div className="card"><p role="alert" className="food-error">{error}</p><div className="row">
+      <button className="btn" disabled={busy} onClick={() => input.current?.click()}>{file ? (zh ? '重拍 / 换图' : 'Retake / choose another') : (zh ? '拍照 / 选择照片' : 'Take / choose photo')}</button>
+      {error && <div className="card"><p role="alert" className="food-error">{error}</p><div className="food-actions" style={{ marginTop: 16 }}>
         <button className="btn" onClick={() => setRetry((n) => n + 1)}>{zh ? '重新识别' : 'Retry recognition'}</button>
         {photo && <button className="btn" onClick={() => { setResult({ ...blank }); setError('') }}>{zh ? '填写营养数据' : 'Enter nutrition'}</button>}
       </div></div>}
     </>}
     {!photoMode && !edit && !picked && <>
-      <p className="muted">{zh ? '从收藏中选择，调整份量即可记录。' : 'Choose a favorite and adjust the amount.'}</p>
+      <p className="food-entry-lead">{zh ? '从收藏中选择，调整份量即可记录。' : 'Choose a favorite and adjust the amount.'}</p>
       <input className="food-search" aria-label={zh ? '搜索收藏食物' : 'Search favorites'} placeholder={zh ? '搜索食物或品牌' : 'Search foods or brands'} value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className="card food-library">{matches.map((item) => <div className="food-saved-row" key={item.id}>
         <button className="food-saved-pick" onClick={() => { setPicked(item); setEditingSaved(false) }}><FoodPhoto path={item.photoUrl} alt={item.name} />

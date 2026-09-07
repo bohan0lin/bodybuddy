@@ -737,47 +737,111 @@ a {
 .sheet-row .val { color: var(--text-muted); font-size: 13px; }
 .sheet-row.danger { color: var(--protein); }
 
-/* Food capture and favorite selection share a compact nutrition review. */
-.food-entry-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-.food-entry-header h1, .food-entry-header h2 { font-size: 23px; margin: 0; }
+/* ══ Food capture ═════════════════════════════ */
+/* The capture screen keeps the identity colour of the home tile it came from:
+   lavender for photo scan, coral elsewhere. Dark theme remaps both to gold. */
+.food-entry-page { --food-accent: var(--accent); }
+.food-entry-page.photo { --food-accent: var(--accent-lav); }
+
+.food-entry-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.food-entry-header .btn-ghost { padding: 0; font-size: 14px; }
+.food-entry-title { font-size: 29px; font-weight: 500; letter-spacing: -0.04em; line-height: 1.05; margin: 0 0 6px; }
+.food-entry-date { font-size: 12px; color: var(--text-muted); margin: 0 0 20px; }
+.food-entry-lead { font-size: 13px; line-height: 1.6; color: var(--text-muted); margin: 0 0 16px; }
+
+/* Thumbnail (meal rows, favourite rows) and the 4:3 hero share one component. */
 .food-photo { width: 52px; height: 52px; flex-shrink: 0; border-radius: 14px; background: var(--surface-2); color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
 .food-photo img { width: 100%; height: 100%; object-fit: cover; }
-.food-hero { display: flex; width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 24px; margin-bottom: 16px; }
-.food-hero img { object-fit: contain; }
-.food-editor { margin-top: 16px; }
-.food-summary { text-align: center; padding: 24px; }
-.food-summary h2 { font-size: 22px; line-height: 1.35; margin: 6px 0 16px; overflow-wrap: anywhere; }
-.food-amount { display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
-.food-amount input { width: 80px; padding: 8px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--text); }
-.food-energy { display: flex; justify-content: center; align-items: baseline; gap: 8px; padding: 22px 0; color: var(--accent); }
-.food-energy strong { font-size: 52px; line-height: 1; font-weight: 500; }
-.food-energy span { font-size: 14px; color: var(--text-muted); }
-.food-macros { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); padding-top: 18px; }
-.food-macros > div { display: grid; gap: 7px; }
+.food-hero {
+  display: block; position: relative; width: 100%; height: auto; aspect-ratio: 4 / 3;
+  border-radius: var(--radius); margin-bottom: 18px; overflow: hidden;
+  border: 1px solid var(--card-border); box-shadow: var(--card-shadow), var(--card-highlight);
+}
+.food-hero img { width: 100%; height: 100%; object-fit: cover; }
+.food-hero.loading::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 32%) 50%, transparent 80%);
+  animation: food-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes food-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* Placeholder before a photo exists, in the same visual family as .capture-tile. */
+.food-drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  aspect-ratio: 4 / 3; margin-bottom: 18px; padding: 24px; text-align: center;
+  border: 1px dashed var(--line-strong); border-radius: var(--radius);
+  background: var(--accent-lav-bg); color: var(--food-accent);
+}
+.food-drop .capture-icon { margin: 0; background: rgb(255 255 255 / 50%); }
+.food-drop p { margin: 0; font-size: 13px; line-height: 1.6; max-width: 220px; }
+
+.food-editor { margin-top: 4px; }
+.food-summary { padding: 24px 22px 22px; margin-bottom: 16px; text-align: center; }
+.food-summary .eyebrow { margin-bottom: 10px; }
+.food-summary h2 { font-size: 21px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.35; margin: 0 0 14px; overflow-wrap: anywhere; }
+.food-amount { display: inline-flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; }
+.food-amount input {
+  width: 78px; padding: 9px 10px; text-align: center; font-weight: 500;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface-2); color: var(--text);
+}
+
+/* Energy uses the Today hero number scale so both screens read as one app. */
+.food-energy { display: flex; justify-content: center; align-items: baseline; gap: 7px; padding: 20px 0 18px; color: var(--food-accent); }
+.food-energy strong { font-size: 44px; font-weight: 500; letter-spacing: -0.06em; line-height: 1; }
+.food-energy span { font-size: 12px; color: var(--text-muted); }
+.food-macros { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); padding-top: 16px; }
+.food-macros > div { display: grid; gap: 5px; }
 .food-macros > div + div { border-left: 1px solid var(--line); }
-.food-macros span { color: var(--text-muted); font-size: 12px; }
-.food-macros strong { font-size: 21px; font-weight: 500; }
-.food-macros small { font-size: 12px; color: var(--text-muted); }
-.food-meal-types { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+.food-macros span { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.food-macros strong { font-size: 15px; font-weight: 500; }
+.food-macros small { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
+.food-meal-types { display: flex; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
 .food-meal-types .chip { flex: 1; justify-content: center; }
-.food-favorite { display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 16px 0 22px; }
-.food-favorite input { width: 18px; height: 18px; accent-color: var(--accent); }
-.food-calibration { min-width: 0; margin-top: 20px; border: 1px solid var(--line); }
-.food-calibration-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.food-calibration .field { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
-.food-actions .btn { min-height: 48px; }
-.food-back { display: block; margin: 18px auto 0; }
-.food-error { color: var(--protein); font-size: 14px; line-height: 1.6; }
-.food-status { text-align: center; padding: 20px 0; color: var(--text-muted); }
-.food-search { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; color: var(--text); padding: 14px; margin: 8px 0 20px; }
+.food-entry-page .chip.active { border-color: var(--food-accent); color: var(--food-accent); }
+.food-favorite { display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 4px 2px 20px; }
+.food-favorite input { width: 18px; height: 18px; accent-color: var(--food-accent); }
+
+/* Calibration reuses the app form style instead of overriding it. */
+.food-calibration { padding: 22px; margin-bottom: 16px; }
+.food-calibration legend { font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); padding: 0; }
+.food-calibration .field { margin-bottom: 16px; }
+.food-calibration .field > span { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
+.food-calibration-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.food-entry-page .field input { color: var(--food-accent); }
+.food-entry-page .field input:focus { border-color: var(--food-accent); }
+
+.food-actions { display: grid; gap: 10px; margin-top: 4px; }
+.food-actions .btn { width: 100%; min-height: 50px; }
+.food-back { display: block; margin: 14px auto 0; }
+.food-error { color: var(--protein); font-size: 13px; line-height: 1.6; margin: 0; }
+.food-status { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 4px 0 18px; color: var(--food-accent); font-size: 13px; }
+.food-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentcolor; animation: food-pulse 1.2s ease-in-out infinite; }
+@keyframes food-pulse { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+
+.food-search { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; color: var(--text); padding: 14px; margin: 0 0 16px; }
+.food-library { padding: 4px 18px; }
 .food-saved-row { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
 .food-saved-row:last-child { border: 0; }
-.food-saved-pick { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 16px 0; text-align: left; }
+.food-saved-pick { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 14px 0; text-align: left; background: none; }
 .food-saved-pick > span:nth-child(2) { flex: 1; min-width: 0; }
-.food-saved-pick strong { display: block; font-weight: 500; overflow-wrap: anywhere; }
-.food-saved-pick small { display: block; color: var(--text-muted); margin-top: 5px; }
-.voice-meal-sheet { padding: 0; border: 1px solid var(--line); border-radius: 26px 26px 0 0; width: min(100%, 480px); max-width: 100%; max-height: 90dvh; margin: auto auto 0; background: var(--bg); color: var(--text); }
+.food-saved-pick strong { display: block; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.food-saved-pick small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* The sheet reuses FoodEntryEditor, so it must supply the same scoped accent. */
+.voice-meal-sheet { --food-accent: var(--accent); padding: 0; border: 1px solid var(--line); border-radius: 26px 26px 0 0; width: min(100%, 480px); max-width: 100%; max-height: 90dvh; margin: auto auto 0; background: var(--bg); color: var(--text); }
 .voice-meal-sheet::backdrop { background: rgb(0 0 0 / 45%); }
 .voice-meal-content { padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); }
 .voice-meal-content textarea { width: 100%; min-height: 110px; padding: 14px; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); resize: vertical; }
 .voice-meal-content > .btn { width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .food-hero.loading::after, .food-status::before { animation: none; }
+}
+
+/* Dark theme: the placeholder icon plate matches the home capture tiles. */
+:root[data-theme='dark'] .food-drop .capture-icon { background: rgb(255 255 255 / 6%); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .food-drop .capture-icon { background: rgb(255 255 255 / 6%); }
+}
