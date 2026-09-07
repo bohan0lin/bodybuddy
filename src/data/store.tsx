@@ -40,7 +40,7 @@ interface StoreValue extends AppData {
   addMeal: (m: Omit<Meal, 'id' | 'createdAt'>) => void
   updateMeal: (id: string, patch: Partial<Omit<Meal, 'id' | 'createdAt'>>) => void
   deleteMeal: (id: string) => void
-  upsertWeight: (w: Omit<WeightLog, 'id'>) => void
+  upsertWeight: (w: Omit<WeightLog, 'id'>) => Promise<void>
   updateProfile: (p: Partial<Profile>) => Promise<void>
   addSavedItem: (s: Omit<SavedItem, 'id'>) => void
   updateSavedItem: (id: string, patch: Partial<Omit<SavedItem, 'id'>>) => void
@@ -184,23 +184,18 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
         supabase.from('meals').delete().eq('id', id).then(({ error }) => error && console.error('deleteMeal', error))
       },
 
-      upsertWeight: (w) => {
-        setData((d) => {
-          const existing = d.weightLogs.find((x) => x.date === w.date)
-          const id = existing?.id ?? uid()
-          const row: WeightLog = { ...w, id }
-          const weightLogs = existing
-            ? d.weightLogs.map((x) => (x.date === w.date ? row : x))
-            : [...d.weightLogs, row]
-          supabase
-            .from('weight_logs')
-            .upsert(
-              { id, user_id: userId, date: w.date, weight: w.weight, body_fat: w.bodyFat ?? null },
-              { onConflict: 'user_id,date' },
-            )
-            .then(({ error }) => error && console.error('upsertWeight', error))
-          return { ...d, weightLogs }
-        })
+      upsertWeight: async (w) => {
+        const { data: saved, error } = await supabase
+          .from('weight_logs')
+          .upsert(
+            { user_id: userId, date: w.date, weight: w.weight, body_fat: w.bodyFat ?? null },
+            { onConflict: 'user_id,date' },
+          )
+          .select('*')
+          .single()
+        if (error) throw error
+        const row = toWeight(saved)
+        setData((d) => ({ ...d, weightLogs: [...d.weightLogs.filter((x) => x.date !== w.date), row] }))
       },
 
       // 乐观更新 + 等待云端结果；失败则回滚并抛出，供页面显示错误、避免「假成功」

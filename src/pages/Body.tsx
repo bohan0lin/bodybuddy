@@ -14,15 +14,33 @@ import { formatDateShort, todayStr } from '../lib/nutrition'
 import { useT } from '../lib/i18n'
 
 export default function Body() {
-  const { weightLogs, upsertWeight, latestWeight } = useStore()
+  const { weightLogs, upsertWeight, latestWeight, profile, updateProfile } = useStore()
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useT()
   const back = (location.state as { back?: string } | null)?.back ?? '/'
   const backLabel = back === '/settings' ? t('common.backMe') : t('common.backToday')
   const [date, setDate] = useState(todayStr())
-  const [weight, setWeight] = useState('')
-  const [bodyFat, setBodyFat] = useState('')
+  const existing = weightLogs.find((entry) => entry.date === todayStr())
+  const [weight, setWeight] = useState(existing ? String(existing.weight) : '')
+  const [bodyFat, setBodyFat] = useState(existing?.bodyFat != null ? String(existing.bodyFat) : '')
+  const [height, setHeight] = useState(profile.heightCm > 0 ? String(profile.heightCm) : '')
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState<'saved' | 'error' | null>(null)
+  const heightChanged = Number(height) !== profile.heightCm
+  const valid = Boolean(date && date <= todayStr())
+    && (!height || (Number(height) > 0 && Number(height) <= 300))
+    && (!weight || (Number(weight) > 0 && Number(weight) <= 1000))
+    && (!bodyFat || (Number(bodyFat) > 0 && Number(bodyFat) <= 100 && Boolean(weight)))
+    && Boolean(weight || (height && heightChanged))
+
+  function changeDate(next: string) {
+    setDate(next)
+    const entry = weightLogs.find((item) => item.date === next)
+    setWeight(entry ? String(entry.weight) : '')
+    setBodyFat(entry?.bodyFat != null ? String(entry.bodyFat) : '')
+    setStatus(null)
+  }
 
   const chartData = useMemo(
     () =>
@@ -32,12 +50,19 @@ export default function Body() {
     [weightLogs],
   )
 
-  function handleSave() {
-    const w = parseFloat(weight)
-    if (!w || w <= 0) return
-    upsertWeight({ date, weight: w, bodyFat: bodyFat ? parseFloat(bodyFat) : undefined })
-    setWeight('')
-    setBodyFat('')
+  async function handleSave() {
+    if (saving || !valid) return
+    setSaving(true)
+    setStatus(null)
+    try {
+      if (heightChanged && height) await updateProfile({ heightCm: Number(height) })
+      if (weight) await upsertWeight({ date, weight: Number(weight), bodyFat: bodyFat ? Number(bodyFat) : undefined })
+      setStatus('saved')
+    } catch {
+      setStatus('error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -49,6 +74,37 @@ export default function Body() {
       >
         {backLabel}
       </button>
+
+      <p className="eyebrow">{t('me.bodyMetrics')}</p>
+
+      {/* Unified metric editor */}
+      <form className="card" onSubmit={(event) => { event.preventDefault(); void handleSave() }} onChange={() => setStatus(null)}>
+        <fieldset disabled={saving} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+          <p className="muted" style={{ fontSize: 13 }}>{t('body.metricsHint')}</p>
+          <div className="field">
+            <label htmlFor="body-height">{t('settings.heightCm')}</label>
+            <input id="body-height" type="number" inputMode="decimal" min="1" max="300" step="0.1" value={height} onChange={(e) => setHeight(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="body-date">{t('body.date')}</label>
+            <input id="body-date" type="date" required value={date} max={todayStr()} onChange={(e) => changeDate(e.target.value)} />
+          </div>
+          <div className="row">
+            <div className="field">
+              <label htmlFor="body-weight">{t('body.weightKg')}</label>
+              <input id="body-weight" type="number" inputMode="decimal" min="0.1" max="1000" step="0.1" placeholder="70.0" value={weight} onChange={(e) => setWeight(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="body-fat">{t('body.bodyFatOpt')}</label>
+              <input id="body-fat" type="number" inputMode="decimal" min="0.1" max="100" step="0.1" placeholder="18.0" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} />
+            </div>
+          </div>
+          {status && <p role={status === 'error' ? 'alert' : 'status'}>{t(status === 'error' ? 'body.saveFailed' : 'settings.saved')}</p>}
+          <button type="submit" className="btn btn-primary btn-block" disabled={saving || !valid}>
+            {t(saving ? 'settings.saving' : 'common.save')}
+          </button>
+        </fieldset>
+      </form>
 
       {/* 概览 */}
       {latestWeight && (
@@ -129,27 +185,7 @@ export default function Body() {
         )}
       </button>
 
-      {/* 记录表单 */}
-      <div className="card">
-        <p className="card-label">{t('body.logOnce')}</p>
-        <div className="field">
-          <label>{t('body.date')}</label>
-          <input type="date" value={date} max={todayStr()} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div className="row">
-          <div className="field">
-            <label>{t('body.weightKg')}</label>
-            <input type="number" inputMode="decimal" step="0.1" placeholder="70.0" value={weight} onChange={(e) => setWeight(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>{t('body.bodyFatOpt')}</label>
-            <input type="number" inputMode="decimal" step="0.1" placeholder="18.0" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} />
-          </div>
-        </div>
-        <button className="btn btn-primary btn-block" onClick={handleSave} disabled={!weight}>
-          {t('common.save')}
-        </button>
-      </div>
+
     </div>
   )
 }

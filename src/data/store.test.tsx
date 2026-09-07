@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StoreProvider, useStore } from './store'
 
-const db = vi.hoisted(() => ({ from: vi.fn(), insert: vi.fn(), results: {} as Record<string, { data: unknown; error: unknown }>, created: { data: null, error: null } as { data: unknown; error: unknown } }))
+const db = vi.hoisted(() => ({ from: vi.fn(), insert: vi.fn(), upsert: vi.fn(), results: {} as Record<string, { data: unknown; error: unknown }>, created: { data: null, error: null } as { data: unknown; error: unknown } }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: db.from } }))
 const profile = { display_name: 'Test', height_cm: 170, target_protein: 100, target_carbs: 200, target_fat: 60, target_calories: 2000 }
 
@@ -17,6 +17,7 @@ function mount() { return render(<StoreProvider userId="test-user"><View /></Sto
 
 beforeEach(() => {
   db.insert.mockReset()
+  db.upsert.mockReset()
   db.results = Object.fromEntries(['profiles', 'weight_logs', 'meals', 'saved_items', 'workouts', 'knowledge'].map((name) => [name, { data: name === 'profiles' ? profile : [], error: null }]))
   db.created = { data: { ...profile, target_calories: 0, target_protein: 0, target_carbs: 0, target_fat: 0 }, error: null }
   db.from.mockImplementation((table: string) => ({
@@ -25,7 +26,36 @@ beforeEach(() => {
       db.insert(row)
       return { select: () => ({ single: () => Promise.resolve(db.created) }) }
     },
+    upsert: (...args: unknown[]) => {
+      db.upsert(...args)
+      return { select: () => ({ single: () => Promise.resolve(db.created) }) }
+    },
   }))
+})
+
+function WeightView() {
+  const store = useStore()
+  if (store.loading) return <p>loading</p>
+  return <>
+    <span data-testid="weight">{store.latestWeight?.weight ?? 'empty'}</span>
+    <button onClick={() => { void store.upsertWeight({ date: '2026-09-07', weight: 70, bodyFat: 20 }).catch(() => {}) }}>save weight</button>
+  </>
+}
+
+it('publishes the database-confirmed measurement once', async () => {
+  db.created = { data: { id: 'server-id', date: '2026-09-07', weight: 70, body_fat: 20 }, error: null }
+  render(<StoreProvider userId="test-user"><WeightView /></StoreProvider>)
+  fireEvent.click(await screen.findByText('save weight'))
+  await waitFor(() => expect(screen.getByTestId('weight').textContent).toBe('70'))
+  expect(db.upsert).toHaveBeenCalledExactlyOnceWith({ user_id: 'test-user', date: '2026-09-07', weight: 70, body_fat: 20 }, { onConflict: 'user_id,date' })
+})
+
+it('does not display a measurement rejected by the database', async () => {
+  db.created = { data: null, error: { message: 'offline' } }
+  render(<StoreProvider userId="test-user"><WeightView /></StoreProvider>)
+  fireEvent.click(await screen.findByText('save weight'))
+  await waitFor(() => expect(db.upsert).toHaveBeenCalledOnce())
+  expect(screen.getByTestId('weight').textContent).toBe('empty')
 })
 afterEach(cleanup)
 

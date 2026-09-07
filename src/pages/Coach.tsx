@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
@@ -49,6 +49,7 @@ export default function Coach() {
   const kcalLabel = t('today.kcal')
 
   const location = useLocation()
+  const navigate = useNavigate()
   const voiceMeal = (location.state as { mode?: string } | null)?.mode === 'voice-meal'
   const voiceSupported = useMemo(() => !!getSpeechRecognition(), [])
 
@@ -156,6 +157,10 @@ export default function Coach() {
       {/* header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 'calc(env(safe-area-inset-top) + 20px) 20px 12px', borderBottom: '1px solid var(--line)' }}>
         <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: '0.02em' }}>✦ {t('assistant.title')}</span>
+        <button className="btn-ghost" onClick={() => navigate('/knowledge')} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, minHeight: 44 }}>
+          <AppIcon name="book" size={19} />
+          <span>{t('knowledge.title')}</span>
+        </button>
       </div>
 
       {/* messages */}
@@ -270,7 +275,7 @@ export default function Coach() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send()}
             placeholder={t('assistant.placeholder')}
-            style={{ flex: 1, padding: '11px 14px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 999, color: 'var(--text)', outline: 'none' }}
+            style={{ flex: 1, minWidth: 0, padding: '11px 14px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 999, color: 'var(--text)', outline: 'none' }}
           />
           <button className="btn btn-accent" style={{ padding: '11px 16px' }} onClick={() => send()} disabled={loading || (!input.trim() && !image)}>↑</button>
         </div>

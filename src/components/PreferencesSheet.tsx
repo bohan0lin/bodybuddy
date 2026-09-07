@@ -1,16 +1,14 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../data/auth'
 import { useT, type Lang } from '../lib/i18n'
 import { usePrefs, type Theme } from '../lib/prefs'
 import AppIcon from './AppIcon'
 
-// 偏好设置弹层：语言 / 外观 直选；下方账户、知识库、退出
+// Preferences, account details, and sign-out controls.
 export default function PreferencesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, lang, setLang } = useT()
   const { theme, setTheme } = usePrefs()
   const { session, signOut } = useAuth()
-  const navigate = useNavigate()
   const panelRef = useRef<HTMLDivElement>(null)
 
   // 无障碍：打开时聚焦进弹层、锁背景滚动、Esc 关闭、Tab 焦点陷阱；关闭时归还焦点给触发按钮
@@ -24,8 +22,9 @@ export default function PreferencesSheet({ open, onClose }: { open: boolean; onC
           )
         : []
     const raf = requestAnimationFrame(() => focusables()[0]?.focus())
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const scrollContainer = panelRef.current?.closest<HTMLElement>('.app-content') ?? document.body
+    const prevOverflow = scrollContainer.style.overflow
+    scrollContainer.style.overflow = 'hidden'
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -50,7 +49,7 @@ export default function PreferencesSheet({ open, onClose }: { open: boolean; onC
     return () => {
       cancelAnimationFrame(raf)
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
+      scrollContainer.style.overflow = prevOverflow
       previouslyFocused?.focus()
     }
   }, [open, onClose])
@@ -95,10 +94,6 @@ export default function PreferencesSheet({ open, onClose }: { open: boolean; onC
 
         <hr className="divider" style={{ margin: '18px 0 2px' }} />
 
-        <button className="sheet-row" type="button" onClick={() => navigate('/knowledge')}>
-          <span>{t('knowledge.title')}</span>
-          <AppIcon name="chevron-right" size={16} style={{ color: 'var(--text-muted)' }} />
-        </button>
         <div className="sheet-row">
           <span>{t('settings.account')}</span>
           <span className="val">{session?.user.email}</span>

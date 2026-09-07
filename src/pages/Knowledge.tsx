@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { useT } from '../lib/i18n'
 import { postJson } from '../lib/api'
@@ -13,6 +14,7 @@ interface Tidied {
 export default function Knowledge() {
   const { knowledgeItems, addKnowledge, deleteKnowledge } = useStore()
   const { t, lang } = useT()
+  const navigate = useNavigate()
 
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -49,6 +51,7 @@ export default function Knowledge() {
 
   return (
     <div className="page">
+      <button className="btn-ghost" onClick={() => navigate('/coach')} style={{ padding: 0, marginBottom: 20 }}>{t('common.backCoach')}</button>
       <p className="eyebrow" style={{ marginBottom: 20 }}>{t('knowledge.title')}</p>
 
       {/* 录入 */}
