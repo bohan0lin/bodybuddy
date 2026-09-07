@@ -1,419 +1,200 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
-import { estimateCalories, formatDateShort, round1, scale, todayStr } from '../lib/nutrition'
+import { useT } from '../lib/i18n'
+import { todayStr } from '../lib/nutrition'
 import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
-import { takePendingPhoto } from '../lib/photoHandoff'
-import { useT } from '../lib/i18n'
-import { usePrefs } from '../lib/prefs'
-import EnergyToggle from '../components/EnergyToggle'
-import { MEAL_TYPES, type Meal, type MealType, type SavedItem, type SavedKind } from '../types'
+import { peekPendingPhoto, takePendingPhoto } from '../lib/photoHandoff'
+import { combineFoods, recordFoodEntry, scaleFood, uploadFoodPhoto, type FoodDraft } from '../lib/foodEntry'
+import { supabase } from '../lib/supabase'
+import FoodPhoto from '../components/FoodPhoto'
+import { MEAL_TYPES, type Meal, type MealType, type SavedItem } from '../types'
 
-type RecogItem = { name: string; amount: number; unit: string; protein: number; carbs: number; fat: number; calories: number }
-type EditState = { kind: 'saved' | 'meal'; id: string } | null
+const blank: FoodDraft = { name: '', amount: 1, unit: 'serving', calories: 0, carbs: 0, protein: 0, fat: 0 }
+const guessType = (): MealType => { const h = new Date().getHours(); return h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack' }
 
-function guessMealType(): MealType {
-  const h = new Date().getHours()
-  if (h < 10) return 'breakfast'
-  if (h < 15) return 'lunch'
-  if (h < 21) return 'dinner'
-  return 'snack'
+export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onDone, onCancel }: {
+  initial: FoodDraft; photo?: string; date?: string; editMeal?: Meal; editSaved?: SavedItem; onDone: () => void; onCancel: () => void
+}) {
+  const { lang, t } = useT()
+  const zh = lang === 'zh'
+  const { reload } = useStore()
+  const [food, setFood] = useState(initial)
+  const [base, setBase] = useState(initial)
+  const [type, setType] = useState<MealType>(editMeal?.type ?? guessType())
+  const [calibrating, setCalibrating] = useState(!initial.name)
+  const [favorite, setFavorite] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [cover, setCover] = useState(photo)
+  const uploaded = useRef<string | undefined>(undefined)
+  const id = useRef(editMeal?.id ?? crypto.randomUUID())
+  const saving = useRef(false)
+  const photoInput = useRef<HTMLInputElement>(null)
+  const valid = food.name.trim().length > 0 && food.name.length <= 200 && food.unit.trim().length > 0
+    && Number.isFinite(food.amount) && food.amount > 0 && food.amount <= 20000
+    && (['protein', 'carbs', 'fat', 'calories'] as const).every((key) => Number.isFinite(food[key]) && food[key] >= 0 && food[key] <= (key === 'calories' ? 20000 : 2000))
+
+  async function save() {
+    if (saving.current || !valid) return
+    saving.current = true; setBusy(true); setError('')
+    try {
+      let path = cover
+      if (cover?.startsWith('data:')) {
+        uploaded.current ??= await uploadFoodPhoto(cover)
+        path = uploaded.current
+      }
+      if (editSaved) {
+        const { error } = await supabase.from('saved_items').update({ name: food.name.trim(), brand: food.brand || null,
+          unit: food.unit, base_amount: food.amount, protein: food.protein, carbs: food.carbs,
+          fat: food.fat, calories: food.calories, photo_url: path ?? null }).eq('id', editSaved.id).select('id').single()
+        if (error) throw error
+      } else {
+        await recordFoodEntry(id.current, { ...food, name: food.name.trim(), type, date: editMeal?.date ?? date ?? todayStr(), photoUrl: path }, favorite)
+      }
+      onDone(); reload()
+    } catch {
+      setError(zh ? '保存失败，请重试。当前内容已保留。' : 'Could not save. Your changes are still here. Please retry.')
+    } finally { saving.current = false; setBusy(false) }
+  }
+
+  return <div className="food-editor">
+    {cover && <FoodPhoto path={cover} alt={food.name || (zh ? '食物照片' : 'Food photo')} className="food-hero" />}
+    {editSaved && <>
+      <input ref={photoInput} type="file" accept="image/*" hidden onChange={async (e) => {
+        const file = e.target.files?.[0]; e.target.value = ''; if (!file) return
+        setBusy(true)
+        try { const image = await fileToResizedBase64(file); setCover(`data:${image.mediaType};base64,${image.data}`); uploaded.current = undefined }
+        catch { setError(zh ? '无法读取图片，请选择 JPEG、PNG 或 WebP。' : 'Cannot read this image. Choose JPEG, PNG or WebP.') }
+        finally { setBusy(false) }
+      }} />
+      <button className="btn" disabled={busy} onClick={() => photoInput.current?.click()}>{zh ? '更换收藏封面' : 'Change favorite photo'}</button>
+    </>}
+    <div className="card food-summary">
+      <p className="eyebrow">{editSaved ? (zh ? '收藏食物' : 'FAVORITE FOOD') : (zh ? '确认这一餐' : 'REVIEW YOUR MEAL')}</p>
+      <h2>{food.name || (zh ? '填写食物信息' : 'Add food details')}</h2>
+      <label className="food-amount">{zh ? '份量' : 'Amount'}
+        <input aria-label={zh ? '份量' : 'Amount'} type="number" min="0.1" step="any" value={food.amount || ''} disabled={busy}
+          onChange={(e) => setFood(base.amount > 0 ? scaleFood({ ...base, name: food.name, brand: food.brand, unit: food.unit }, Number(e.target.value)) : { ...food, amount: Number(e.target.value) })} />
+        <span>{food.unit === 'serving' || food.unit === '份' ? (zh ? '份' : 'serving') : food.unit}</span>
+      </label>
+      <div className="food-energy"><strong className="num">{Math.round(food.calories)}</strong><span>kcal</span></div>
+      <div className="food-macros">{(['carbs', 'protein', 'fat'] as const).map((key) => <div key={key}>
+        <span>{t(`macro.${key}`)}</span><strong className="num">{Math.round(food[key] * 10) / 10}<small> g</small></strong>
+      </div>)}</div>
+    </div>
+    {!editSaved && <div className="food-meal-types">{MEAL_TYPES.map((mt) => <button key={mt} disabled={busy}
+      className={`chip${mt === type ? ' active' : ''}`} onClick={() => setType(mt)}>{t(`meal.${mt}`)}</button>)}</div>}
+    {calibrating && <fieldset className="card food-calibration" disabled={busy}>
+      <legend>{zh ? '校准营养数据' : 'Calibrate nutrition'}</legend>
+      <label className="field">{zh ? '食物名称' : 'Food name'}<input value={food.name} maxLength={200} onChange={(e) => setFood({ ...food, name: e.target.value })} /></label>
+      <label className="field">{zh ? '品牌（可选）' : 'Brand (optional)'}<input value={food.brand ?? ''} onChange={(e) => setFood({ ...food, brand: e.target.value })} /></label>
+      <label className="field">{zh ? '单位' : 'Unit'}<input value={food.unit} maxLength={30} onChange={(e) => setFood({ ...food, unit: e.target.value })} /></label>
+      <div className="food-calibration-grid">{(['calories', 'carbs', 'protein', 'fat'] as const).map((key) => <label className="field" key={key}>
+        {key === 'calories' ? (zh ? '热量 (kcal)' : 'Calories (kcal)') : `${t(`macro.${key}`)} (g)`}
+        <input type="number" min="0" step="any" value={food[key]} onChange={(e) => setFood({ ...food, [key]: Number(e.target.value) })} />
+      </label>)}</div>
+      <button className="btn" disabled={!valid} onClick={() => { setBase(food); setCalibrating(false) }}>{zh ? '保存校准' : 'Apply calibration'}</button>
+    </fieldset>}
+    {!editSaved && <label className="food-favorite"><input type="checkbox" checked={favorite} disabled={busy} onChange={(e) => setFavorite(e.target.checked)} />
+      {zh ? '保存到快捷食物' : 'Save to favorites'}{cover ? (zh ? '（包含照片）' : ' with photo') : ''}</label>}
+    {error && <p role="alert" className="food-error">{error}</p>}
+    <div className="row food-actions">
+      <button className="btn" disabled={busy} onClick={() => setCalibrating(true)}>{zh ? '校准' : 'Calibrate'}</button>
+      <button className="btn btn-primary" disabled={busy || !valid || calibrating} onClick={save}>{busy ? (zh ? '保存中…' : 'Saving…') : editSaved || editMeal ? (zh ? '保存修改' : 'Save changes') : (zh ? '记录' : 'Log meal')}</button>
+    </div>
+    <button className="btn-ghost food-back" disabled={busy} onClick={onCancel}>{t('common.cancel')}</button>
+    {editSaved && <button className="btn-ghost food-back" disabled={busy} onClick={async () => {
+      if (!window.confirm(zh ? '移除此收藏？已有的饮食记录会保留。' : 'Remove this favorite? Existing meal records will remain.')) return
+      setBusy(true); setError('')
+      try {
+        const { error } = await supabase.from('saved_items').delete().eq('id', editSaved.id).select('id').single()
+        if (error) throw error
+        onDone(); reload()
+      } catch { setError(zh ? '删除失败，请重试。' : 'Could not remove favorite. Please retry.') }
+      finally { setBusy(false) }
+    }}>{zh ? '移除收藏' : 'Remove favorite'}</button>}
+  </div>
 }
 
-const UNITS = ['g', '份', 'ml', '个', '勺']
-
 export default function LogMeal() {
-  const { addMeal, updateMeal, meals, deleteMeal, savedItems, addSavedItem, updateSavedItem, deleteSavedItem } = useStore()
+  const { lang, t } = useT()
+  const zh = lang === 'zh'
   const navigate = useNavigate()
   const location = useLocation()
-  const returnTo = useRef<string | null>(null)
-  const didInit = useRef(false)
-  const [logDate, setLogDate] = useState<string | null>(null)
-  const { t, lang } = useT()
-  const { toEnergy, fromEnergy } = usePrefs()
-  const kcalLabel = t('today.kcal') // 显示永远千卡
-  const today = todayStr()
-
-  const [type, setType] = useState<MealType>(guessMealType())
-  const [name, setName] = useState('')
-  const [brand, setBrand] = useState('')
-  const [unit, setUnit] = useState('g')
-  const [amount, setAmount] = useState('')
-  const [protein, setProtein] = useState('')
-  const [carbs, setCarbs] = useState('')
-  const [fat, setFat] = useState('')
-  const [calories, setCalories] = useState('') // 内部存千卡
-
-  const base = useRef<{ amount: number; p: number; c: number; f: number; cal: number } | null>(null)
-
-  const [pickTab, setPickTab] = useState<SavedKind>('food')
-  const [saveToLib, setSaveToLib] = useState(false)
-  const [edit, setEdit] = useState<EditState>(null)
-
-  const [libraryOpen, setLibraryOpen] = useState(false)
-  const [manageLib, setManageLib] = useState(false)
+  const state = location.state as { editMeal?: Meal; logDate?: string; returnTo?: string; mode?: string } | null
+  const photoMode = location.pathname === '/capture' || state?.mode === 'photo'
+  const { savedItems } = useStore()
   const [query, setQuery] = useState('')
-
-  const fileRef = useRef<HTMLInputElement>(null)
-  const cameraRef = useRef<HTMLButtonElement>(null)
-  const [recognizing, setRecognizing] = useState(false)
-  const [recogItems, setRecogItems] = useState<RecogItem[]>([])
-  const [recogError, setRecogError] = useState<string | null>(null)
-
-  const [looking, setLooking] = useState(false)
-  const [lookupMsg, setLookupMsg] = useState<string | null>(null)
-
-  const autoCal = estimateCalories(+protein || 0, +carbs || 0, +fat || 0)
-
-  const tabItems = useMemo(() => savedItems.filter((s) => s.kind === pickTab), [savedItems, pickTab])
-  const recent = useMemo(() => tabItems.slice(0, 5), [tabItems])
-  const searched = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return tabItems.filter((s) => !q || s.name.toLowerCase().includes(q) || (s.brand ?? '').toLowerCase().includes(q))
-  }, [tabItems, query])
-
-  const todayMeals = useMemo(
-    () => meals.filter((m) => m.date === today).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-    [meals, today],
-  )
-
-  const unitLabel = (u: string): string => {
-    if (u === '份') return t('unit.serving')
-    if (u === '个') return t('unit.piece')
-    if (u === '勺') return t('unit.spoon')
-    return u
-  }
-
-  function resetForm() {
-    setName(''); setBrand(''); setUnit('g'); setAmount(''); setProtein(''); setCarbs(''); setFat(''); setCalories('')
-    base.current = null
-  }
-
-  function fillForm(v: RecogItem & { brand?: string }) {
-    setName(v.name); setBrand(v.brand ?? ''); setUnit(v.unit); setAmount(String(v.amount))
-    setProtein(String(v.protein)); setCarbs(String(v.carbs)); setFat(String(v.fat)); setCalories(String(v.calories))
-    base.current = { amount: v.amount, p: v.protein, c: v.carbs, f: v.fat, cal: v.calories }
-  }
-  function fillFrom(item: SavedItem) {
-    fillForm({ name: item.name, brand: item.brand, unit: item.unit, amount: item.baseAmount, protein: item.protein, carbs: item.carbs, fat: item.fat, calories: item.calories })
-  }
-
-  function startEditSaved(item: SavedItem) {
-    setEdit({ kind: 'saved', id: item.id }); fillFrom(item); setSaveToLib(false); setLibraryOpen(false)
-  }
-  function startEditMeal(m: Meal) {
-    setEdit({ kind: 'meal', id: m.id })
-    setName(m.name); setBrand(m.brand ?? ''); setUnit(m.unit ?? 'g'); setAmount(m.amount ? String(m.amount) : '')
-    setProtein(String(m.protein)); setCarbs(String(m.carbs)); setFat(String(m.fat)); setCalories(String(m.calories))
-    setType(m.type)
-    base.current = m.amount ? { amount: m.amount, p: m.protein, c: m.carbs, f: m.fat, cal: m.calories } : null
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-  function cancelEdit() {
-    const rt = returnTo.current
-    returnTo.current = null
-    setEdit(null)
-    resetForm()
-    if (rt) navigate(rt)
-  }
-
-  // 从某天详情进入编辑：读取路由 state（只处理一次）
+  const [picked, setPicked] = useState<SavedItem | null>(null)
+  const [editingSaved, setEditingSaved] = useState(false)
+  const [file, setFile] = useState<File | null>(() => photoMode ? peekPendingPhoto() : null)
+  const [photo, setPhoto] = useState('')
+  const [result, setResult] = useState<FoodDraft | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [retry, setRetry] = useState(0)
+  const input = useRef<HTMLInputElement>(null)
+  const done = () => navigate(state?.returnTo ?? '/')
+  useEffect(() => { if (photoMode && file === peekPendingPhoto()) takePendingPhoto() }, [photoMode, file])
   useEffect(() => {
-    if (didInit.current) return
-    didInit.current = true
-    const st = location.state as { editMeal?: Meal; logDate?: string; returnTo?: string; mode?: 'photo' | 'manual' | 'voice' } | null
-    const pending = takePendingPhoto()
-    if (st) {
-      returnTo.current = st.returnTo ?? null
-      if (st.editMeal) startEditMeal(st.editMeal)
-      else if (st.logDate) setLogDate(st.logDate)
-    }
-    // 从主页「拍照识别」手递来的图：直接开始识别（相机/相册已在主页那一次点击里打开）
-    if (pending) {
-      window.scrollTo({ top: 0 })
-      recognizeFile(pending)
-    } else if (st?.mode === 'photo') {
-      requestAnimationFrame(() => cameraRef.current?.scrollIntoView({ block: 'start' }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  function changeAmount(val: string) {
-    setAmount(val)
-    const a = parseFloat(val)
-    const b = base.current
-    if (b && a > 0) {
-      setProtein(String(round1(scale(b.p, a, b.amount))))
-      setCarbs(String(round1(scale(b.c, a, b.amount))))
-      setFat(String(round1(scale(b.f, a, b.amount))))
-      setCalories(String(Math.round(scale(b.cal, a, b.amount))))
-    }
-  }
-  function editMacro(setter: (v: string) => void, val: string) { base.current = null; setter(val) }
-  function editCalories(shown: string) { base.current = null; setCalories(shown === '' ? '' : String(Math.round(fromEnergy(Number(shown) || 0)))) }
-
-  async function lookupName() {
-    const q = name.trim()
-    if (!q) return
-    setLooking(true); setLookupMsg(null)
-    try {
-      type Match = { matched: boolean; unit: string; baseAmount: number; protein: number; carbs: number; fat: number; calories: number }
-      const { match } = await postJson<{ match: Match | null }>('/api/lookup', { name: q })
-      if (match && match.matched) {
-        setUnit(match.unit); setAmount(String(match.baseAmount))
-        setProtein(String(match.protein)); setCarbs(String(match.carbs)); setFat(String(match.fat)); setCalories(String(match.calories))
-        base.current = { amount: match.baseAmount, p: match.protein, c: match.carbs, f: match.fat, cal: match.calories }
-        setLookupMsg(t('log.lookupHit'))
-      } else setLookupMsg(t('log.lookupMiss'))
-    } catch { setLookupMsg(t('log.lookupMiss')) } finally { setLooking(false) }
-  }
-
-  async function recognizeFile(file: File) {
-    setRecognizing(true); setRecogError(null); setRecogItems([])
-    try {
-      const { data, mediaType } = await fileToResizedBase64(file)
-      const { items } = await postJson<{ items: RecogItem[] }>('/api/recognize', { image: data, mediaType, lang })
-      if (!items.length) setRecogError(t('log.recogEmpty'))
-      else { setRecogItems(items); fillForm(items[0]) }
-    } catch (err) {
-      setRecogError(err instanceof Error ? err.message : t('log.recogEmpty'))
-    } finally { setRecognizing(false) }
-  }
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
     if (!file) return
-    recognizeFile(file)
-  }
+    const controller = new AbortController()
+    // Synchronize the visible status with this abortable file-processing request.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setBusy(true); setError(''); setResult(null); setPhoto('')
+    void (async () => {
+      try {
+        const image = await fileToResizedBase64(file)
+        if (controller.signal.aborted) return
+        setPhoto(`data:${image.mediaType};base64,${image.data}`)
+        const response = await postJson<{ items: FoodDraft[] }>('/api/recognize', { image: image.data, mediaType: image.mediaType, lang }, controller.signal)
+        if (controller.signal.aborted) return
+        const combined = combineFoods(response.items)
+        if (!combined) throw new Error(zh ? '没有识别到食物，请重拍或填写营养数据。' : 'No food found. Retake the photo or enter its nutrition.')
+        setResult(combined)
+      } catch (err) { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : t('log.recogEmpty')) }
+      finally { if (!controller.signal.aborted) setBusy(false) }
+    })()
+    return () => controller.abort()
+  }, [file, retry, lang, zh, t])
 
-  function currentFields() {
-    return { p: +protein || 0, c: +carbs || 0, f: +fat || 0, cal: +calories || autoCal, amt: +amount || undefined }
-  }
-  function handleSave() {
-    if (!name.trim()) return
-    const { p, c, f, cal, amt } = currentFields()
-    addMeal({ date: logDate ?? todayStr(), type, name: name.trim(), brand: brand.trim() || undefined, amount: amt, unit, protein: p, carbs: c, fat: f, calories: cal })
-    if (saveToLib) addSavedItem({ kind: pickTab, name: name.trim(), brand: brand.trim() || undefined, unit, baseAmount: amt ?? 1, protein: p, carbs: c, fat: f, calories: cal })
-    navigate(returnTo.current ?? '/')
-  }
-  function savePrimary() {
-    if (!name.trim()) return
-    const { p, c, f, cal, amt } = currentFields()
-    if (edit?.kind === 'saved') {
-      updateSavedItem(edit.id, { name: name.trim(), brand: brand.trim() || undefined, unit, baseAmount: amt ?? 1, protein: p, carbs: c, fat: f, calories: cal })
-      cancelEdit()
-    } else if (edit?.kind === 'meal') {
-      updateMeal(edit.id, { type, name: name.trim(), brand: brand.trim() || undefined, amount: amt, unit, protein: p, carbs: c, fat: f, calories: cal })
-      cancelEdit()
-    } else handleSave()
-  }
-
-  const quickAmounts = base.current ? [0.5, 1, 1.5, 2].map((k) => round1(base.current!.amount * k)) : []
-
-  const macroLine = (cal: number, p: number, c: number, f: number) =>
-    `${Math.round(cal)} ${kcalLabel} · ${t('macro.protein')} ${p} ${t('macro.carbs')} ${c} ${t('macro.fat')} ${f}`
-
-  return (
-    <div className="page">
-      {/* 拍照识别 */}
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{ display: 'none' }} />
-      <button ref={cameraRef} className="card" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', textAlign: 'left' }} onClick={() => fileRef.current?.click()} disabled={recognizing}>
-        <span style={{ fontSize: 24 }}>◐</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 500 }}>{recognizing ? t('log.recognizing') : t('log.photoTitle')}</div>
-          <div className="muted" style={{ fontSize: 12 }}>{recognizing ? t('log.analyzing') : t('log.photoSub')}</div>
-        </div>
-        <span className="dim">›</span>
-      </button>
-
-      {/* 识别结果 */}
-      {(recogItems.length > 0 || recogError) && (
-        <div className="card">
-          <p className="card-label">{t('log.recogResult')}</p>
-          {recogError ? (
-            <>
-              <div className="empty" style={{ paddingBottom: 14 }}>{recogError}</div>
-              <div className="row">
-                <button className="btn" onClick={() => { setRecogError(null); fileRef.current?.click() }}>{t('log.retry')}</button>
-                <button className="btn" onClick={() => setRecogError(null)}>{t('log.recogManual')}</button>
-              </div>
-            </>
-          ) : (
-            <>
-              {recogItems.map((it, i) => (
-                <div key={i} className="list-row" style={{ padding: '12px 0' }}>
-                  <button onClick={() => fillForm(it)} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}<span className="muted" style={{ fontWeight: 400 }}> · {it.amount}{unitLabel(it.unit)}</span></div>
-                    <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{macroLine(it.calories, it.protein, it.carbs, it.fat)}</div>
-                  </button>
-                  <span className="dim" style={{ fontSize: 20 }}>＋</span>
-                </div>
-              ))}
-              <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t('log.recogHint')}</p>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* 常用：最近 5 + 更多 */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className={'chip' + (pickTab === 'food' ? ' active' : '')} onClick={() => setPickTab('food')}>{t('log.freqFoods')}</button>
-            <button className={'chip' + (pickTab === 'meal' ? ' active' : '')} onClick={() => setPickTab('meal')}>{t('log.myMeals')}</button>
-          </div>
-          {tabItems.length > 0 && (
-            <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => { setQuery(''); setManageLib(false); setLibraryOpen(true) }}>
-              {t('log.more')} ({tabItems.length}) ›
-            </button>
-          )}
-        </div>
-
-        {recent.length === 0 ? (
-          <div className="empty">{pickTab === 'food' ? t('log.noFreqFood') : t('log.noFreqMeal')}<br />{t('log.saveHint')}</div>
-        ) : (
-          recent.map((item) => (
-            <div key={item.id} className="list-row" style={{ padding: '14px 0' }}>
-              <button onClick={() => fillFrom(item)} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}{item.brand && <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {item.brand}</span>}<span className="muted" style={{ fontWeight: 400 }}> · {item.baseAmount}{unitLabel(item.unit)}</span></div>
-                <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{macroLine(item.calories, item.protein, item.carbs, item.fat)}</div>
-              </button>
-              <span className="dim" style={{ fontSize: 20 }}>＋</span>
-            </div>
-          ))
-        )}
+  const edit = state?.editMeal
+  const initial = edit ? { ...edit, amount: edit.amount ?? 1, unit: edit.unit ?? 'serving' }
+    : picked ? { ...picked, amount: picked.baseAmount } : result
+  const matches = savedItems.filter((s) => `${s.name} ${s.brand ?? ''}`.toLowerCase().includes(query.trim().toLowerCase()))
+  return <div className="page food-entry-page">
+    <header className="food-entry-header"><button className="btn-ghost" onClick={done}>‹ {zh ? '返回' : 'Back'}</button>
+      <h1>{edit ? (zh ? '编辑记录' : 'Edit meal') : photoMode ? (zh ? '拍照识别' : 'Photo log') : (zh ? '快捷输入' : 'Quick entry')}</h1></header>
+    {state?.logDate && <p className="muted">{state.logDate}</p>}
+    {photoMode && <>
+      <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setFile(f) }} />
+      {!result && photo && <FoodPhoto path={photo} alt={zh ? '食物照片' : 'Food photo'} className="food-hero" />}
+      {!file && <div className="card empty"><p>{zh ? '拍下这一餐，确认营养后记录。' : 'Photograph your meal, review its nutrition, then log it.'}</p></div>}
+      <button className="btn" disabled={busy} onClick={() => input.current?.click()}>{file ? (zh ? '重拍 / 换图' : 'Retake / choose another') : (zh ? '拍照 / 选择照片' : 'Take / choose photo')}</button>
+      {busy && <p role="status" className="food-status">{zh ? '正在识别食物与营养…' : 'Recognizing food and nutrition…'}</p>}
+      {error && <div className="card"><p role="alert" className="food-error">{error}</p><div className="row">
+        <button className="btn" onClick={() => setRetry((n) => n + 1)}>{zh ? '重新识别' : 'Retry recognition'}</button>
+        {photo && <button className="btn" onClick={() => { setResult({ ...blank }); setError('') }}>{zh ? '填写营养数据' : 'Enter nutrition'}</button>}
+      </div></div>}
+    </>}
+    {!photoMode && !edit && !picked && <>
+      <p className="muted">{zh ? '从收藏中选择，调整份量即可记录。' : 'Choose a favorite and adjust the amount.'}</p>
+      <input className="food-search" aria-label={zh ? '搜索收藏食物' : 'Search favorites'} placeholder={zh ? '搜索食物或品牌' : 'Search foods or brands'} value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="card food-library">{matches.map((item) => <div className="food-saved-row" key={item.id}>
+        <button className="food-saved-pick" onClick={() => { setPicked(item); setEditingSaved(false) }}><FoodPhoto path={item.photoUrl} alt={item.name} />
+          <span><strong>{item.name}</strong><small>{item.baseAmount} {item.unit} · {Math.round(item.calories)} kcal</small></span><span aria-hidden="true">＋</span></button>
+        <button className="btn-ghost" aria-label={`${zh ? '编辑' : 'Edit'} ${item.name}`} onClick={() => { setPicked(item); setEditingSaved(true) }}>{zh ? '编辑' : 'Edit'}</button>
+      </div>)}
+      {!savedItems.length ? <div className="empty">{zh ? '还没有收藏的食物' : 'No favorites yet'}<p>{zh ? '拍照记录时，勾选保存到快捷食物。' : 'Save a food to favorites when you log a photo.'}</p>
+        <button className="btn btn-primary" onClick={() => navigate('/capture', { state })}>{zh ? '拍照添加' : 'Add a food photo'}</button></div>
+        : !matches.length && <p className="empty">{zh ? '没有匹配的食物' : 'No matching foods'}</p>}
       </div>
-
-      {logDate && edit === null && <p style={{ fontSize: 13, color: 'var(--accent)', margin: '0 0 12px', textAlign: 'center' }}>{t('log.addingTo', { d: formatDateShort(logDate) })}</p>}
-      {edit?.kind === 'meal' && <p style={{ fontSize: 13, color: 'var(--accent)', margin: '0 0 12px', textAlign: 'center' }}>{t('log.editMeal')}</p>}
-      {edit?.kind === 'saved' && <p style={{ fontSize: 13, color: 'var(--accent)', margin: '0 0 12px', textAlign: 'center' }}>{t('log.editing')}</p>}
-
-      {/* 餐次（编辑常用项时隐藏） */}
-      {edit?.kind !== 'saved' && (
-        <div className="card">
-          <p className="card-label">{t('log.mealType')}</p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {MEAL_TYPES.map((mt) => (
-              <button key={mt} onClick={() => setType(mt)} className="chip" style={{ flex: 1, justifyContent: 'center', background: type === mt ? 'var(--surface-2)' : 'var(--surface)', color: type === mt ? 'var(--accent)' : 'var(--text)', borderColor: type === mt ? 'var(--accent)' : 'var(--line)', fontWeight: type === mt ? 600 : 400 }}>{t('meal.' + mt)}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 表单 */}
-      <div className="card">
-        <div className="field" style={{ marginBottom: 14 }}>
-          <label>{t('log.foodName')}</label>
-          <input placeholder={t('log.foodNamePh')} value={name} onChange={(e) => { setName(e.target.value); setLookupMsg(null) }} />
-        </div>
-        <div className="field" style={{ marginBottom: 10 }}>
-          <label>{t('log.brand')}</label>
-          <input placeholder={t('log.brandPh')} value={brand} onChange={(e) => setBrand(e.target.value)} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          <button className="chip" onClick={lookupName} disabled={looking || !name.trim()} style={{ padding: '7px 14px', fontSize: 13, opacity: !name.trim() ? 0.5 : 1 }}>⌕ {looking ? t('log.looking') : t('log.lookup')}</button>
-          {lookupMsg && <span className="muted" style={{ fontSize: 12, color: 'var(--accent)' }}>{lookupMsg}</span>}
-        </div>
-
-        <div className="field">
-          <label>{t('log.amount')}</label>
-          <input type="number" inputMode="decimal" placeholder="100" value={amount} onChange={(e) => changeAmount(e.target.value)} />
-        </div>
-        <div className="field">
-          <label>{t('log.unit')}</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {UNITS.map((u) => (
-              <button key={u} onClick={() => setUnit(u)} className="chip" style={{ flex: 1, justifyContent: 'center', padding: '10px 4px', background: unit === u ? 'var(--surface-2)' : 'var(--surface)', color: unit === u ? 'var(--accent)' : 'var(--text)', borderColor: unit === u ? 'var(--accent)' : 'var(--line)', fontWeight: unit === u ? 600 : 400 }}>{unitLabel(u)}</button>
-            ))}
-          </div>
-        </div>
-
-        {quickAmounts.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, margin: '4px 0 20px', flexWrap: 'wrap' }}>
-            {quickAmounts.map((a) => <button key={a} className={'chip' + (+amount === a ? ' active' : '')} style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => changeAmount(String(a))}>{a}{unitLabel(unit)}</button>)}
-          </div>
-        )}
-        {base.current && <p className="muted" style={{ fontSize: 12, margin: '-6px 0 16px', color: 'var(--accent)' }}>{t('log.scaleHint')}</p>}
-
-        <div className="row">
-          <div className="field"><label>{t('log.proteinG')}</label><input type="number" inputMode="decimal" placeholder="0" value={protein} onChange={(e) => editMacro(setProtein, e.target.value)} /></div>
-          <div className="field"><label>{t('log.carbsG')}</label><input type="number" inputMode="decimal" placeholder="0" value={carbs} onChange={(e) => editMacro(setCarbs, e.target.value)} /></div>
-        </div>
-        <div className="row">
-          <div className="field"><label>{t('log.fatG')}</label><input type="number" inputMode="decimal" placeholder="0" value={fat} onChange={(e) => editMacro(setFat, e.target.value)} /></div>
-          <div className="field">
-            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>{t('settings.energy')}</span><EnergyToggle /></label>
-            <input type="number" inputMode="decimal" placeholder={autoCal ? String(toEnergy(autoCal)) : '0'} value={calories === '' ? '' : toEnergy(+calories)} onChange={(e) => editCalories(e.target.value)} />
-          </div>
-        </div>
-
-        {edit === null && (
-          <button onClick={() => setSaveToLib((v) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '4px 0', color: saveToLib ? 'var(--accent)' : 'var(--text-dim)' }}>
-            <span style={{ width: 20, height: 20, borderRadius: 6, border: '1px solid ' + (saveToLib ? 'var(--accent)' : 'var(--line-strong)'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: saveToLib ? 'var(--accent)' : 'transparent', color: 'var(--accent-fg)' }}>{saveToLib ? '✓' : ''}</span>
-            <span style={{ fontSize: 14 }}>{pickTab === 'food' ? t('log.saveToFreqFood') : t('log.saveToFreqMeal')}<span className="muted" style={{ fontSize: 12 }}>{t('log.saveBasis')}</span></span>
-          </button>
-        )}
-      </div>
-
-      {/* 动作区 */}
-      <div className="row">
-        <button className="btn" onClick={() => (edit ? cancelEdit() : navigate(-1))}>{t('common.cancel')}</button>
-        <button className="btn btn-primary" onClick={savePrimary} disabled={!name.trim()}>
-          {edit?.kind === 'saved' ? t('log.updateSaved') : edit?.kind === 'meal' ? t('log.updateMeal') : t('log.saveRecord')}
-        </button>
-      </div>
-
-      {/* 今日已记录（点可编辑） */}
-      {edit === null && !logDate && todayMeals.length > 0 && (
-        <div className="card" style={{ marginTop: 16 }}>
-          <p className="card-label">{t('log.loggedToday')}</p>
-          {todayMeals.map((m) => (
-            <div key={m.id} className="list-row">
-              <button onClick={() => startEditMeal(m)} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}{m.brand && <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {m.brand}</span>}{m.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {m.amount}{unitLabel(m.unit ?? '')}</span> : null}</div>
-                <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{t('meal.' + m.type)} · {macroLine(m.calories, m.protein, m.carbs, m.fat)}</div>
-              </button>
-              <button className="btn-ghost" style={{ fontSize: 13, padding: '6px 8px', color: 'var(--accent)' }} onClick={() => startEditMeal(m)}>{t('log.edit')}</button>
-              <button className="btn-ghost" aria-label="delete" style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteMeal(m.id)}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 全部常用（全屏搜索/管理） */}
-      {libraryOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'var(--bg)' }}>
-          <div style={{ maxWidth: 460, margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', padding: 'calc(20px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <button className="btn-ghost" style={{ padding: 6, fontSize: 20 }} onClick={() => setLibraryOpen(false)}>‹</button>
-              <input placeholder={t('log.searchPh')} value={query} onChange={(e) => setQuery(e.target.value)} autoFocus style={{ flex: 1, padding: '10px 14px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--text)', outline: 'none' }} />
-              <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setManageLib((v) => !v)}>{manageLib ? t('common.done') : t('common.manage')}</button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              <p className="card-label" style={{ marginBottom: 4 }}>{t('log.allSaved')} · {t(pickTab === 'food' ? 'log.freqFoods' : 'log.myMeals')}</p>
-              {searched.length === 0 ? (
-                <div className="empty">{query.trim() ? t('log.noMatch') : t('log.noFreqFood')}</div>
-              ) : (
-                searched.map((item) => (
-                  <div key={item.id} className="list-row" style={{ padding: '14px 0' }}>
-                    <button onClick={() => (manageLib ? startEditSaved(item) : (fillFrom(item), setLibraryOpen(false)))} style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}{item.brand && <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {item.brand}</span>}<span className="muted" style={{ fontWeight: 400 }}> · {item.baseAmount}{unitLabel(item.unit)}</span></div>
-                      <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{macroLine(item.calories, item.protein, item.carbs, item.fat)}</div>
-                    </button>
-                    {manageLib ? (
-                      <>
-                        <span className="dim" style={{ fontSize: 13, marginRight: 4 }}>{t('log.edit')} ›</span>
-                        <button className="btn-ghost" style={{ color: 'var(--protein)', fontSize: 20, padding: 6 }} onClick={() => deleteSavedItem(item.id)} aria-label="delete">−</button>
-                      </>
-                    ) : <span className="dim" style={{ fontSize: 20 }}>＋</span>}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+    </>}
+    {initial && <FoodEntryEditor key={`${picked?.id ?? edit?.id ?? 'photo'}-${retry}-${photo}`} initial={initial}
+      photo={edit?.photoUrl ?? picked?.photoUrl ?? (photo || undefined)} date={state?.logDate} editMeal={edit}
+      editSaved={editingSaved ? picked ?? undefined : undefined} onDone={done}
+      onCancel={() => { if (picked) { setPicked(null); setEditingSaved(false) } else done() }} />}
+  </div>
 }

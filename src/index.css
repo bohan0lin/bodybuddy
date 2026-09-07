@@ -736,3 +736,48 @@ a {
 .sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 2px; width: 100%; background: none; text-align: left; font-size: 14px; color: var(--text); }
 .sheet-row .val { color: var(--text-muted); font-size: 13px; }
 .sheet-row.danger { color: var(--protein); }
+
+/* Food capture and favorite selection share a compact nutrition review. */
+.food-entry-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.food-entry-header h1, .food-entry-header h2 { font-size: 23px; margin: 0; }
+.food-photo { width: 52px; height: 52px; flex-shrink: 0; border-radius: 14px; background: var(--surface-2); color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
+.food-photo img { width: 100%; height: 100%; object-fit: cover; }
+.food-hero { display: flex; width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 24px; margin-bottom: 16px; }
+.food-hero img { object-fit: contain; }
+.food-editor { margin-top: 16px; }
+.food-summary { text-align: center; padding: 24px; }
+.food-summary h2 { font-size: 22px; line-height: 1.35; margin: 6px 0 16px; overflow-wrap: anywhere; }
+.food-amount { display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
+.food-amount input { width: 80px; padding: 8px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--text); }
+.food-energy { display: flex; justify-content: center; align-items: baseline; gap: 8px; padding: 22px 0; color: var(--accent); }
+.food-energy strong { font-size: 52px; line-height: 1; font-weight: 500; }
+.food-energy span { font-size: 14px; color: var(--text-muted); }
+.food-macros { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); padding-top: 18px; }
+.food-macros > div { display: grid; gap: 7px; }
+.food-macros > div + div { border-left: 1px solid var(--line); }
+.food-macros span { color: var(--text-muted); font-size: 12px; }
+.food-macros strong { font-size: 21px; font-weight: 500; }
+.food-macros small { font-size: 12px; color: var(--text-muted); }
+.food-meal-types { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+.food-meal-types .chip { flex: 1; justify-content: center; }
+.food-favorite { display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 16px 0 22px; }
+.food-favorite input { width: 18px; height: 18px; accent-color: var(--accent); }
+.food-calibration { min-width: 0; margin-top: 20px; border: 1px solid var(--line); }
+.food-calibration-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.food-calibration .field { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.food-actions .btn { min-height: 48px; }
+.food-back { display: block; margin: 18px auto 0; }
+.food-error { color: var(--protein); font-size: 14px; line-height: 1.6; }
+.food-status { text-align: center; padding: 20px 0; color: var(--text-muted); }
+.food-search { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; color: var(--text); padding: 14px; margin: 8px 0 20px; }
+.food-saved-row { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
+.food-saved-row:last-child { border: 0; }
+.food-saved-pick { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 16px 0; text-align: left; }
+.food-saved-pick > span:nth-child(2) { flex: 1; min-width: 0; }
+.food-saved-pick strong { display: block; font-weight: 500; overflow-wrap: anywhere; }
+.food-saved-pick small { display: block; color: var(--text-muted); margin-top: 5px; }
+.voice-meal-sheet { padding: 0; border: 1px solid var(--line); border-radius: 26px 26px 0 0; width: min(100%, 480px); max-width: 100%; max-height: 90dvh; margin: auto auto 0; background: var(--bg); color: var(--text); }
+.voice-meal-sheet::backdrop { background: rgb(0 0 0 / 45%); }
+.voice-meal-content { padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); }
+.voice-meal-content textarea { width: 100%; min-height: 110px; padding: 14px; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); resize: vertical; }
+.voice-meal-content > .btn { width: 100%; }

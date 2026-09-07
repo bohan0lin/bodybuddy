@@ -61,14 +61,16 @@ accepted upstream.
 
 ## Deployment order
 
-1. Apply `supabase/migrations/20260906000500_ai_request_limits.sql` to the target
-   Supabase project through the operator-approved migration process. Do not run
-   a reset against a remote database. The additive migration is repeatable.
+1. Apply `supabase/migrations/20260906000500_ai_request_limits.sql` and
+   `supabase/migrations/20260906000600_food_photos.sql` to the target Supabase
+   project through the operator-approved migration process. Do not run a reset
+   against a remote database. The additive migrations are repeatable.
 2. Add `SUPABASE_SERVICE_ROLE_KEY` to Vercel's server environment for that same
    project, alongside the existing Supabase URL and anon/publishable key. Never
    use a VITE_ prefix for the service key, commit it, or paste it into chat.
-3. Deploy frontend and API together. Verify valid calls, 429 retry hints and
-   blocked invalid requests on staging before a production release.
+3. Deploy frontend and API together. Verify valid calls, 429 retry hints,
+   blocked invalid requests, and private favorite-photo behavior on staging
+   before a production release.
 
 The privileged key is used only in the reservation RPC client. Account data is
 still loaded using the verified user's own bearer token and RLS. If the key,

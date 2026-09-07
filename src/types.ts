@@ -86,6 +86,7 @@ export interface Workout {
 export type SavedKind = 'food' | 'meal'
 
 export interface SavedItem {
+  photoUrl?: string
   id: string
   kind: SavedKind
   name: string

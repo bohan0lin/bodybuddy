@@ -1,6 +1,10 @@
-// 跨路由的内存手递：主页「拍照识别」先在用户手势内打开相机/相册，
-// 选好图后把 File 暂存这里，导航到 /log 由识别流程取用（避免把 base64 放进 URL）。
+// In-memory handoff across routes: the home photo tile opens the camera inside the
+// user gesture, then parks the File here for /capture to recognize (keeps base64 out of the URL).
 let pending: File | null = null
+
+export function peekPendingPhoto(): File | null {
+  return pending
+}
 
 export function setPendingPhoto(file: File): void {
   pending = file

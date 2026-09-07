@@ -157,6 +157,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
             carbs: meal.carbs,
             fat: meal.fat,
             calories: meal.calories,
+            photo_url: meal.photoUrl ?? null,
           })
           .then(({ error }) => error && console.error('addMeal', error))
       },
@@ -164,6 +165,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       updateMeal: (id, patch) => {
         setData((d) => ({ ...d, meals: d.meals.map((x) => (x.id === id ? { ...x, ...patch } : x)) }))
         const row: DatabaseUpdate<'meals'> = {}
+        if (patch.photoUrl !== undefined) row.photo_url = patch.photoUrl || null
         if (patch.date !== undefined) row.date = patch.date
         if (patch.type !== undefined) row.type = patch.type
         if (patch.name !== undefined) row.name = patch.name
@@ -266,6 +268,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
               fat: item.fat,
               calories: item.calories,
               note: item.note ?? null,
+              photo_url: item.photoUrl ?? null,
             })
             .then(({ error }) => error && console.error('addSaved', error))
           return { ...d, savedItems: [item, ...d.savedItems] }
@@ -278,6 +281,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
           savedItems: d.savedItems.map((x) => (x.id === id ? { ...x, ...patch } : x)),
         }))
         const row: DatabaseUpdate<'saved_items'> = {}
+        if (patch.photoUrl !== undefined) row.photo_url = patch.photoUrl || null
         if (patch.kind !== undefined) row.kind = patch.kind
         if (patch.name !== undefined) row.name = patch.name
         if (patch.brand !== undefined) row.brand = patch.brand || null

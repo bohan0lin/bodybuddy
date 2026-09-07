@@ -90,6 +90,7 @@ function AuthedApp() {
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/day/:date" element={<Day />} />
           <Route path="/log" element={<LogMeal />} />
+          <Route path="/capture" element={<LogMeal />} />
           <Route path="/workout" element={<LogWorkout />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/targets" element={<SettingsTargets />} />

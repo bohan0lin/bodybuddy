@@ -1,6 +1,7 @@
 import { useT } from '../lib/i18n'
 import type { Meal, MealType } from '../types'
 import AppIcon, { type IconName } from './AppIcon'
+import FoodPhoto from './FoodPhoto'
 
 const MEAL_ICON: Record<MealType, IconName> = {
   breakfast: 'sunrise',
@@ -35,7 +36,7 @@ export default function TodayMeals({ meals, onOpen, onViewAll }: { meals: Meal[]
         <section className="meal-list float-card" aria-label={t('today.todaysMeals')}>
           {shown.map((m) => (
             <button key={m.id} className="meal-row" type="button" onClick={() => onOpen(m)}>
-              <span className="meal-mark"><AppIcon name={MEAL_ICON[m.type]} size={18} /></span>
+              {m.photoUrl ? <FoodPhoto path={m.photoUrl} alt={m.name} /> : <span className="meal-mark"><AppIcon name={MEAL_ICON[m.type]} size={18} /></span>}
               <span style={{ minWidth: 0 }}>
                 <span className="meal-name" style={{ display: 'block' }}>{m.name}</span>
                 <span className="meal-time">{t(('meal.' + m.type) as 'meal.breakfast')} · {fmt(m.createdAt)}</span>

@@ -35,6 +35,7 @@ export const toSaved = (r: DatabaseRow<'saved_items'>): SavedItem => ({
   carbs: Number(r.carbs),
   fat: Number(r.fat),
   calories: Number(r.calories),
+  photoUrl: r.photo_url ?? undefined,
   note: r.note ?? undefined,
 })
 export const toWorkout = (r: DatabaseRow<'workouts'>): Workout => ({
