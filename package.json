@@ -10,14 +10,16 @@
     "typecheck": "tsc -b && node scripts/check-api-build.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:e2e": "node scripts/e2e/run.mjs",
     "db:start": "supabase start -x realtime,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset --local",
-    "db:test": "node --test --test-concurrency=1 scripts/db/database.test.mjs scripts/db/limits.test.mjs scripts/db/photos.test.mjs",
+    "db:test": "node --test --test-concurrency=1 scripts/db/database.test.mjs scripts/db/limits.test.mjs scripts/db/photos.test.mjs scripts/db/actions.test.mjs scripts/db/retrieval.test.mjs",
     "db:upgrade": "node scripts/db/upgrade.mjs",
     "db:types": "node scripts/db/types.mjs",
     "db:types:check": "node scripts/db/types.mjs --check",
-    "eval": "tsx evals/run.ts"
+    "eval": "tsx evals/run.ts",
+    "eval:compare": "tsx evals/compare.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.41",
@@ -34,6 +36,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",

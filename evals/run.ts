@@ -1,141 +1,91 @@
-/* BodyBuddy AI 评测台
- * 用法：
- *   npm run eval            跑全部（lookup + assistant）
- *   npm run eval -- lookup      只跑「名字查营养(RAG)」
- *   npm run eval -- assistant   只跑「助手工具调用」
- * 需要环境变量：GOOGLE_GENERATIVE_AI_API_KEY、VITE_SUPABASE_URL、VITE_SUPABASE_ANON_KEY
- * 低于阈值以退出码 1 结束（CI 显示红，但默认不阻止合并）。
- * 抗限流：遇到 429/配额自动退避重试；仍被限流则记为「跳过」（不算失败，不拉低通过率）。
- */
-import { loadEnvLocal } from './env'
-import { lookupCases, assistantCases, assistantContext } from './cases'
+import { readFile, mkdir, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
+import { z } from 'zod'
+import { google } from '@ai-sdk/google'
+import { openai } from '@ai-sdk/openai'
+import { anthropic } from '@ai-sdk/anthropic'
+import { assistantChat } from '../api/_lib/assistant'
+import { lookupFoods } from '../api/_lib/rag'
+import { RETRIEVAL_VERSION } from '../api/_lib/retrieval'
+import { assistantContext } from './cases'
+import { DATASET_VERSION, retrievalCases, toolCases } from './dataset'
+import { SCORER_VERSION, estimateCost, scoreActions, scoreRetrieval, summarize, type Row } from './scoring'
 
-loadEnvLocal()
-
-const PASS_THRESHOLD = 0.8 // 每个套件通过率阈值（只统计真正跑成的用例）
-const CALL_GAP_MS = 4000 // 每条用例之间的间隔，缓解免费额度每分钟限流
-const RATE_RE = /429|rate.?limit|quota|too many|resource.?exhausted|overload|unavailable/i
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const inRange = (v: unknown, [lo, hi]: [number, number]) => typeof v === 'number' && v >= lo && v <= hi
-
-// 限流时退避重试；始终失败则把原错误抛出（若是限流错误，调用方据此标记为跳过）
-async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
-  let last: unknown
-  for (let i = 0; i < 4; i++) {
-    try {
-      return await fn()
-    } catch (e) {
-      last = e
-      const msg = e instanceof Error ? e.message : String(e)
-      if (!RATE_RE.test(msg)) throw e
-      const wait = 20000 * (i + 1)
-      console.log(`  …被限流，${wait / 1000}s 后重试（${label}）`)
-      await sleep(wait)
-    }
-  }
-  throw last
+// Live runs are opt-in. This runner never loads production .env.local credentials.
+const args = process.argv.slice(2)
+const flags = new Set(['--live','--dry-run'])
+const values = new Set(['--config','--suite','--max-cases','--max-usd'])
+const options: Record<string,string> = {}
+for (let i = 0; i < args.length; i++) {
+  if (flags.has(args[i])) options[args[i]] = 'true'
+  else if (values.has(args[i]) && args[i + 1] && !args[i + 1].startsWith('--')) options[args[i]] = args[++i]
+  else throw new Error(`Unknown or missing option: ${args[i]}`)
 }
-const isRateLimit = (e: unknown) => RATE_RE.test(e instanceof Error ? e.message : String(e))
-
-type Status = 'pass' | 'fail' | 'skip'
-interface Row {
-  name: string
-  status: Status
-  detail: string
-}
-
-// 返回 null 表示该套件全被限流跳过（结果不确定，不参与判定）
-function printSuite(title: string, rows: Row[]): number | null {
-  const passed = rows.filter((r) => r.status === 'pass').length
-  const failed = rows.filter((r) => r.status === 'fail').length
-  const skipped = rows.filter((r) => r.status === 'skip').length
-  const scored = passed + failed
-  const rate = scored ? passed / scored : null
-  const rateStr = rate === null ? '—（全被限流跳过）' : `${(rate * 100).toFixed(0)}%`
-  console.log(`\n━━ ${title} ── ${passed}/${scored} 通过（${rateStr}）${skipped ? `，跳过 ${skipped}` : ''}`)
-  const icon = { pass: '✓', fail: '✗', skip: '∅' }
-  for (const r of rows) console.log(`  ${icon[r.status]} ${r.name}${r.status === 'pass' ? '' : `  → ${r.detail}`}`)
-  return rate
-}
-
-async function runLookup(): Promise<number | null> {
-  const { lookupFoods } = await import('../api/_lib/rag')
-  const rows: Row[] = []
-  for (const c of lookupCases) {
-    try {
-      const [m] = await withRetry(() => lookupFoods([c.query]), c.query)
-      let ok: boolean
-      let detail: string
-      if (c.expectNoMatch) {
-        ok = !m || !m.matched
-        detail = m ? `误命中 ${m.name} (d=${m.distance.toFixed(2)})` : 'ok'
-      } else {
-        ok = !!m && m.matched && m.name === c.expect
-        detail = m ? `得到 ${m.name} (d=${m.distance.toFixed(2)})，期望 ${c.expect}` : `无命中，期望 ${c.expect}`
-      }
-      rows.push({ name: `「${c.query}」`, status: ok ? 'pass' : 'fail', detail })
-    } catch (e) {
-      rows.push({ name: `「${c.query}」`, status: isRateLimit(e) ? 'skip' : 'fail', detail: `${e instanceof Error ? e.message : e}` })
-    }
-    await sleep(CALL_GAP_MS)
-  }
-  return printSuite('2 · 名字查营养（向量RAG）', rows)
-}
-
-async function runAssistant(): Promise<number | null> {
-  const { assistantChat } = await import('../api/_lib/assistant')
-  const rows: Row[] = []
-  for (const c of assistantCases) {
-    try {
-      const { actions } = await withRetry(
-        () => assistantChat({ messages: [{ role: 'user', text: c.text }], context: assistantContext, lang: 'zh' }),
-        c.text,
-      )
-      let ok = false
-      let detail = ''
-      if (c.action === null) {
-        ok = actions.length === 0
-        detail = ok ? 'ok' : `不该调工具，却调了 ${actions.map((a) => a.type).join(',')}`
-      } else {
-        const a = actions.find((x) => x.type === c.action)
-        if (!a) {
-          detail = `期望动作 ${c.action}，实际 ${actions.map((x) => x.type).join(',') || '无'}`
-        } else {
-          ok = true
-          if (c.nameIncludes && !(a.name ?? '').includes(c.nameIncludes)) { ok = false; detail = `name「${a.name}」不含「${c.nameIncludes}」` }
-          if (ok && c.protein && !inRange(a.protein, c.protein)) { ok = false; detail = `蛋白 ${a.protein} 不在 [${c.protein}]` }
-          if (ok && c.durationMin && !inRange(a.durationMin, c.durationMin)) { ok = false; detail = `时长 ${a.durationMin} 不在 [${c.durationMin}]` }
-          if (ok) detail = 'ok'
+const suite = z.enum(['all','tools','retrieval']).parse(options['--suite'] ?? 'all')
+const maxCases = z.coerce.number().int().min(1).max(100).parse(options['--max-cases'] ?? 12)
+const maxUsd = z.coerce.number().positive().max(20).parse(options['--max-usd'] ?? 0.5)
+const modelSchema = z.object({ id: z.string().regex(/^[a-z0-9-]+$/), provider: z.enum(['google','openai','anthropic']), model: z.string().min(1),
+  pricing: z.object({ inputPerMillion: z.number().nonnegative(), outputPerMillion: z.number().nonnegative(), verifiedOn: z.iso.date() }).nullable() }).strict()
+const configs = z.array(modelSchema).min(1).max(3).parse(JSON.parse(await readFile(options['--config'] ?? 'evals/models.example.json', 'utf8')))
+if (new Set(configs.map(c => c.id)).size !== configs.length) throw new Error('Model configuration IDs must be unique')
+const hash = (value: string) => createHash('sha256').update(value).digest('hex')
+const versions = Object.fromEntries(await Promise.all(['api/_lib/assistant.ts','api/_lib/contracts.ts','api/_lib/retrieval.ts','scripts/foods.json','evals/dataset.ts','evals/scoring.ts'].map(async file => [file, hash(await readFile(file,'utf8'))])))
+const manifest = { dataset: DATASET_VERSION, scorer: SCORER_VERSION, retrieval: RETRIEVAL_VERSION, versions,
+  commit: execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), dirty: Boolean(execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim()),
+  configs, suite, maxCases, maxUsd, startedAt: new Date().toISOString(), mode: options['--live'] && !options['--dry-run'] ? 'live' : 'dry-run' }
+const rows: Row[] = []
+let calls = 0, spent = 0, unknownSpend = false
+const keyNames = { google: 'GOOGLE_GENERATIVE_AI_API_KEY', openai: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY' }
+const providers = { google, openai, anthropic }
+if (manifest.mode === 'live') {
+  if (suite !== 'tools') {
+    // Only the explicitly named evaluation database may be queried.
+    process.env.SUPABASE_URL = process.env.EVAL_SUPABASE_URL ?? ''
+    process.env.SUPABASE_ANON_KEY = process.env.EVAL_SUPABASE_ANON_KEY ?? ''
+    delete process.env.VITE_SUPABASE_URL
+    delete process.env.VITE_SUPABASE_ANON_KEY
+    for (const strategy of ['vector','hybrid'] as const) for (const c of retrievalCases) {
+      const start = performance.now()
+      const row: Row = { id: c.id, suite: 'retrieval', config: strategy, status: 'inconclusive', detail: 'Missing evaluation configuration or request budget', latencyMs: 0 }
+      if (process.env.EVAL_SUPABASE_URL && process.env.EVAL_SUPABASE_ANON_KEY && process.env.GOOGLE_GENERATIVE_AI_API_KEY && calls < maxCases && spent < maxUsd && !unknownSpend) {
+        // Embedding cost is configured separately from generation pricing.
+        const price = Number(process.env.EVAL_EMBEDDING_MAX_USD_PER_QUERY)
+        if (Number.isFinite(price) && price > 0 && spent + price <= maxUsd) {
+          calls++; spent += price
+          try {
+            const [actual] = await lookupFoods([{ name: c.query, unit: c.unit, brand: c.brand }], AbortSignal.timeout(60000), { strict: true, strategy })
+            const score = scoreRetrieval(actual,c.expected)
+            Object.assign(row,{status:score.pass ? 'pass':'fail', detail:actual?.name ?? 'No accepted match', incorrectMatch:score.incorrectMatch})
+          } catch { row.detail = 'Retrieval infrastructure or provider unavailable' }
+          // The reserved ceiling is a budget guard, not a measured cost.
         }
       }
-      rows.push({ name: `「${c.text}」`, status: ok ? 'pass' : 'fail', detail })
-    } catch (e) {
-      rows.push({ name: `「${c.text}」`, status: isRateLimit(e) ? 'skip' : 'fail', detail: `${e instanceof Error ? e.message : e}` })
+      row.latencyMs = Math.round(performance.now() - start); rows.push(row)
     }
-    await sleep(CALL_GAP_MS)
   }
-  return printSuite('3 · 助手工具调用', rows)
-}
-
-// ── 主流程 ────────────────────────────────────────────────
-const only = process.argv.slice(2).map((s) => s.toLowerCase())
-const wants = (name: string) => only.length === 0 || only.includes(name)
-
-const rates: { suite: string; rate: number | null }[] = []
-if (wants('lookup')) rates.push({ suite: 'lookup', rate: await runLookup() })
-if (wants('assistant')) rates.push({ suite: 'assistant', rate: await runAssistant() })
-
-console.log('\n────────────────────────────')
-let failed = false
-for (const r of rates) {
-  if (r.rate === null) {
-    console.log(`⚠️  ${r.suite}: 全被限流跳过，本次不确定（不判失败）`)
-    continue
+  if (suite !== 'retrieval') for (const config of configs) for (const c of toolCases) {
+    const start = performance.now()
+    const row: Row = { id:c.id, suite:'tools', config:config.id, status:'inconclusive',detail:'Missing provider key, verified pricing or remaining budget',latencyMs:0 }
+    if (process.env[keyNames[config.provider]] && config.pricing && calls < maxCases && spent < maxUsd && !unknownSpend) {
+      calls++
+      try {
+        const result = await assistantChat({ messages:[{role:'user',text:c.text}],context:assistantContext,date:'2026-09-09',lang:c.id === 'a02' || c.id === 'a05' ? 'zh':'en',model:providers[config.provider](config.model),
+          onUsage(usage) { row.inputTokens=usage.inputTokens; row.outputTokens=usage.outputTokens; row.estimatedUsd=estimateCost(usage.inputTokens,usage.outputTokens,config.pricing!); } },AbortSignal.timeout(60000))
+        const score=scoreActions(result.actions,c.expected)
+        Object.assign(row,{status:score.pass?'pass':'fail',detail:score.detail,toolCorrect:score.toolCorrect,argumentsCorrect:score.argumentsCorrect})
+      } catch { row.detail='Provider unavailable, timed out, or returned an invalid result' }
+      if (row.estimatedUsd === undefined) unknownSpend=true
+      else spent += row.estimatedUsd
+    }
+    row.latencyMs=Math.round(performance.now()-start); rows.push(row)
   }
-  const ok = r.rate >= PASS_THRESHOLD
-  if (!ok) failed = true
-  console.log(`${ok ? '✅' : '❌'} ${r.suite}: ${(r.rate * 100).toFixed(0)}%（阈值 ${PASS_THRESHOLD * 100}%）`)
 }
-if (rates.length === 0) console.log('没有匹配的套件，可用：lookup / assistant')
-process.exitCode = failed ? 1 : 0
+const groups = [...new Set(rows.map(row => row.suite + '/' + row.config))].map(group => ({group,...summarize(rows.filter(row => row.suite + '/' + row.config === group))}))
+const report = {manifest,summary:summarize(rows),groups,rows,budget:{requests:calls,spentOrReservedUsd:spent,unknownSpend, note:'Observed-cost stopping can exceed the cap by the final bounded request; no retries. Unknown spend stops further calls.'}}
+const dir = 'evals/results/' + manifest.startedAt.replace(/[:.]/g,'-')
+await mkdir(dir,{recursive:true})
+await writeFile(dir+'/report.json',JSON.stringify(report,null,2)+'\n')
+await writeFile(dir+'/report.md',`# Evaluation ${manifest.mode}\n\nDataset: ${DATASET_VERSION}. Scorer: ${SCORER_VERSION}. Commit: ${manifest.commit}.\n\nStatus: ${report.summary.status}. No measured results are produced by dry runs.\n\n| Suite/config | Pass | Fail | Inconclusive |\n|---|---:|---:|---:|\n${groups.map(g=>`| ${g.group} | ${g.passed} | ${g.failed} | ${g.inconclusive} |`).join('\n')}\n\nModel judgment and execution correctness are evaluated separately; this report does not certify browser E2E or user timing outcomes.\n`)
+console.log(JSON.stringify({directory:dir,mode:manifest.mode,summary:report.summary,groups},null,2))
+if (manifest.mode==='live') process.exitCode=report.summary.status==='inconclusive'?2:report.summary.status==='fail'?1:0

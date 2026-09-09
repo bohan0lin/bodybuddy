@@ -1,0 +1,36 @@
+name: Proposal E2E
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: proposal-e2e-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  proposals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run db:start
+      - run: npm run db:reset
+      - name: Desktop and mobile proposal journeys
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: proposal-e2e-failures
+          path: |
+            playwright-report/
+            tests/e2e/playwright-report/
+            test-results/
+          retention-days: 7
+      - if: always()
+        run: npm run db:stop

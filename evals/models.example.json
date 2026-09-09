@@ -1,0 +1,5 @@
+[
+  { "id": "google-baseline", "provider": "google", "model": "gemini-3.6-flash", "pricing": null },
+  { "id": "openai-candidate", "provider": "openai", "model": "gpt-4o-mini", "pricing": null },
+  { "id": "anthropic-candidate", "provider": "anthropic", "model": "SET_A_CURRENT_SUPPORTED_MODEL_ID", "pricing": null }
+]
