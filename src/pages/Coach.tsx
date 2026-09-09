@@ -7,7 +7,9 @@ import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
 import { createVoiceController, type VoiceState } from '../lib/voice'
 import AppIcon from '../components/AppIcon'
-import type { MealType } from '../types'
+import type { ActionProposal } from '../../api/_lib/contracts'
+import { responses } from '../../api/_lib/contracts'
+import ActionProposalCard from '../components/ActionProposalCard'
 
 // 浏览器语音识别（Web Speech API）特性检测；不支持则退回文本输入
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -16,37 +18,19 @@ function getSpeechRecognition(): any {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-interface Action {
-  type: 'log' | 'save' | 'workout'
-  mealType?: MealType
-  kind?: 'food' | 'meal'
-  name?: string
-  brand?: string
-  amount?: number
-  unit?: string
-  baseAmount?: number
-  protein?: number
-  carbs?: number
-  fat?: number
-  calories?: number
-  workoutType?: string
-  note?: string
-  durationMin?: number
-}
-
 interface Msg {
   role: 'user' | 'assistant'
   text: string
   image?: string
-  actions?: Action[]
-  done?: Record<number, boolean>
+  actions?: ActionProposal[]
 }
 
 // AI 教练：整屏对话页（原悬浮助手改造而来）
 export default function Coach() {
-  const { addMeal, addSavedItem, addWorkout } = useStore()
+  const { refreshRecords } = useStore()
+  const [refreshError, setRefreshError] = useState(false)
   const { t, lang } = useT()
-  const kcalLabel = t('today.kcal')
+
 
   const location = useLocation()
   const navigate = useNavigate()
@@ -123,8 +107,8 @@ export default function Coach() {
     try {
       const recent = history.slice(-39)
       const payloadMsgs = recent.map((m, i) => ({ role: m.role, text: m.text, image: i === recent.length - 1 ? m.image : undefined }))
-      const res = await postJson<{ reply: string; actions: Action[] }>('/api/assistant', { messages: payloadMsgs, date: todayStr(), hour: new Date().getHours(), lang })
-      setMessages((ms) => [...ms, { role: 'assistant', text: res.reply, actions: res.actions ?? [], done: {} }])
+      const res = responses.assistant.parse(await postJson<unknown>('/api/assistant', { messages: payloadMsgs, date: todayStr(), hour: new Date().getHours(), lang }))
+      setMessages((ms) => [...ms, { role: 'assistant', text: res.reply, actions: res.actions }])
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''
       const busy = /503|overload|unavailable|429|rate limit/i.test(msg)
@@ -133,23 +117,6 @@ export default function Coach() {
       setLoading(false)
       scrollDown()
     }
-  }
-
-  function confirmAction(mi: number, ai: number) {
-    const a = messages[mi].actions?.[ai]
-    if (!a) return
-    if (a.type === 'log') {
-      addMeal({ date: todayStr(), type: (a.mealType ?? 'snack') as MealType, name: a.name ?? '', brand: a.brand || undefined, amount: a.amount, unit: a.unit ?? 'g', protein: a.protein ?? 0, carbs: a.carbs ?? 0, fat: a.fat ?? 0, calories: a.calories ?? 0 })
-    } else if (a.type === 'workout') {
-      addWorkout({ date: todayStr(), type: a.workoutType ?? 'other', note: a.note || undefined, durationMin: a.durationMin ?? 0, calories: a.calories ?? 0 })
-    } else {
-      addSavedItem({ kind: a.kind ?? 'food', name: a.name ?? '', brand: a.brand || undefined, unit: a.unit ?? 'g', baseAmount: a.baseAmount ?? 1, protein: a.protein ?? 0, carbs: a.carbs ?? 0, fat: a.fat ?? 0, calories: a.calories ?? 0 })
-    }
-    setMessages((ms) => ms.map((m, i) => (i === mi ? { ...m, done: { ...(m.done ?? {}), [ai]: true } } : m)))
-  }
-
-  function dismissAction(mi: number, ai: number) {
-    setMessages((ms) => ms.map((m, i) => (i === mi ? { ...m, done: { ...(m.done ?? {}), [ai]: true } } : m)))
   }
 
   return (
@@ -190,44 +157,11 @@ export default function Coach() {
                 {m.text}
               </div>
             )}
-            {m.actions?.map((a, ai) => (
-              <div key={ai} className="card" style={{ marginTop: 8, marginBottom: 0, width: '85%', padding: 16 }}>
-                <p className="card-label" style={{ marginBottom: 10 }}>{a.type === 'log' ? t('assistant.logAction') : a.type === 'workout' ? t('workout.title') : t('assistant.saveAction')}</p>
-                {a.type === 'workout' ? (
-                  <>
-                    <div style={{ fontWeight: 500 }}>
-                      {t(('workout.type.' + a.workoutType) as 'workout.type.strength')}
-                      {a.note ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {a.note}</span> : null}
-                    </div>
-                    <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                      {a.durationMin} {t('workout.min')} · {Math.round(a.calories ?? 0)} {kcalLabel}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ fontWeight: 500 }}>
-                      {a.name}
-                      {a.brand ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · {a.brand}</span> : null}
-                      {a.amount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.amount}{a.unit ?? ''}</span> : a.baseAmount ? <span className="muted" style={{ fontWeight: 400 }}> · {a.baseAmount}{a.unit ?? ''}</span> : null}
-                    </div>
-                    <div className="num" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                      {Math.round(a.calories ?? 0)} {kcalLabel} · {t('macro.protein')} {a.protein} {t('macro.carbs')} {a.carbs} {t('macro.fat')} {a.fat}
-                    </div>
-                  </>
-                )}
-                {m.done?.[ai] ? (
-                  <p style={{ color: 'var(--accent)', fontSize: 13, marginTop: 12, marginBottom: 0 }}>{t('assistant.done')}</p>
-                ) : (
-                  <div className="row" style={{ marginTop: 14 }}>
-                    <button className="btn" style={{ padding: '10px' }} onClick={() => dismissAction(mi, ai)}>{t('assistant.dismiss')}</button>
-                    <button className="btn btn-accent" style={{ padding: '10px' }} onClick={() => confirmAction(mi, ai)}>{t('assistant.confirm')}</button>
-                  </div>
-                )}
-              </div>
-            ))}
+            {m.actions?.map((proposal) => <ActionProposalCard key={proposal.actionId} proposal={proposal} onSaved={() => { void refreshRecords().catch(() => setRefreshError(true)) }} />)}
           </div>
         ))}
         {loading && <p className="muted" style={{ fontSize: 13 }}>{t('assistant.thinking')}</p>}
+        {refreshError && <p role="alert">{t('proposal.refreshError')} <button className="btn-ghost" onClick={() => { void refreshRecords().then(() => setRefreshError(false)).catch(() => {}) }}>{t('common.retry')}</button></p>}
       </div>
 
       {/* input */}

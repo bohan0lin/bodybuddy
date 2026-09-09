@@ -9,10 +9,35 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agent_actions: {
+        Row: {
+          action_id: string
+          created_at: string
+          payload: Json
+          record_id: string
+          user_id: string
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          payload: Json
+          record_id: string
+          user_id: string
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          payload?: Json
+          record_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       foods: {
         Row: {
           aliases: string | null
           base_amount: number
+          brand: string | null
           calories: number
           carbs: number
           created_at: string
@@ -21,12 +46,15 @@ export type Database = {
           id: string
           name: string
           name_en: string | null
+          preparation: string | null
           protein: number
+          source: string
           unit: string
         }
         Insert: {
           aliases?: string | null
           base_amount?: number
+          brand?: string | null
           calories: number
           carbs: number
           created_at?: string
@@ -35,12 +63,15 @@ export type Database = {
           id?: string
           name: string
           name_en?: string | null
+          preparation?: string | null
           protein: number
+          source?: string
           unit?: string
         }
         Update: {
           aliases?: string | null
           base_amount?: number
+          brand?: string | null
           calories?: number
           carbs?: number
           created_at?: string
@@ -49,7 +80,9 @@ export type Database = {
           id?: string
           name?: string
           name_en?: string | null
+          preparation?: string | null
           protein?: number
+          source?: string
           unit?: string
         }
         Relationships: []
@@ -284,6 +317,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_agent_action: {
+        Args: { p_action_id: string; p_payload: Json }
+        Returns: Json
+      }
+      find_foods_exact: {
+        Args: {
+          p_brand?: string
+          p_preparation?: string
+          p_query: string
+          p_unit?: string
+        }
+        Returns: {
+          base_amount: number
+          calories: number
+          carbs: number
+          distance: number
+          fat: number
+          id: string
+          name: string
+          name_en: string
+          protein: number
+          source: string
+          unit: string
+        }[]
+      }
+      find_foods_semantic: {
+        Args: {
+          p_brand?: string
+          p_embedding: string
+          p_preparation?: string
+          p_unit?: string
+        }
+        Returns: {
+          base_amount: number
+          calories: number
+          carbs: number
+          distance: number
+          fat: number
+          id: string
+          name: string
+          name_en: string
+          protein: number
+          source: string
+          unit: string
+        }[]
+      }
       match_foods: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {

@@ -17,5 +17,5 @@ it('keeps saved injection text out of system instructions and tools proposal-onl
   })
   const zero = { protein: 0, carbs: 0, fat: 0, calories: 0 }
   const result = await assistantChat({ messages: [{ role: 'user', text: 'log rice' }], context: { targets: zero, consumed: zero, todayMeals: [], savedItems: [], hour: 12, knowledge: [{ title: 'untrusted', content: injection }] } })
-  expect(result.actions).toEqual([{ type: 'log', name: 'rice', mealType: 'lunch', protein: 1, carbs: 1, fat: 1, calories: 10 }])
+  expect(result.actions).toEqual([{ actionId: expect.any(String), date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), action: { type: 'log', name: 'rice', mealType: 'lunch', protein: 1, carbs: 1, fat: 1, calories: 10 } }])
 })

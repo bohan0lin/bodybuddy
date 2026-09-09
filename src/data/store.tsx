@@ -1,6 +1,6 @@
 import { toWeight, toMeal, toSaved, toWorkout, toKnowledge, toProfile } from './rows'
 import type { DatabaseUpdate } from '../lib/database'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { type KnowledgeItem, type Meal, type Profile, type SavedItem, type WeightLog, type Workout } from '../types'
 import { estimateCalories } from '../lib/nutrition'
 import { hasHydrationError, shouldInsertDefaultProfile } from '../lib/hydration'
@@ -37,6 +37,7 @@ interface StoreValue extends AppData {
   loading: boolean
   hydrationError: boolean
   reload: () => void
+  refreshRecords: () => Promise<void>
   addMeal: (m: Omit<Meal, 'id' | 'createdAt'>) => void
   updateMeal: (id: string, patch: Partial<Omit<Meal, 'id' | 'createdAt'>>) => void
   deleteMeal: (id: string) => void
@@ -69,6 +70,17 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
   const [hydrationError, setHydrationError] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
+  const refreshSequence = useRef(0)
+  const refreshRecords = useCallback(async () => {
+    const sequence = ++refreshSequence.current
+    const [meals, workouts, saved] = await Promise.all([
+      supabase.from('meals').select('*').eq('user_id', userId),
+      supabase.from('workouts').select('*').eq('user_id', userId),
+      supabase.from('saved_items').select('*').eq('user_id', userId),
+    ])
+    if (meals.error || workouts.error || saved.error) throw new Error('Record refresh failed')
+    if (sequence === refreshSequence.current) setData(current => ({ ...current, meals: meals.data.map(toMeal), workouts: workouts.data.map(toWorkout), savedItems: saved.data.map(toSaved) }))
+  }, [userId])
 
   // 登录后拉取该用户全部数据
   useEffect(() => {
@@ -137,6 +149,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       loading,
       hydrationError,
       reload,
+      refreshRecords,
 
       addMeal: (m) => {
         const calories = m.calories || estimateCalories(m.protein, m.carbs, m.fat)
@@ -360,7 +373,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       latestWeight: sortedWeights[sortedWeights.length - 1],
       prevWeight: sortedWeights[sortedWeights.length - 2],
     }
-  }, [data, loading, hydrationError, reload, userId])
+  }, [data, loading, hydrationError, reload, refreshRecords, userId])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

@@ -6,6 +6,16 @@ const STORAGE_KEY = 'bodybuddy:lang'
 type Dict = Record<string, string>
 
 const zh: Dict = {
+  'proposal.title': '待确认提案',
+  'proposal.refreshError': '记录已保存，但列表刷新失败。',
+  'proposal.estimate': 'AI 估算，可修改。确认后才会保存；修改分量时请同时核对营养值。',
+  'proposal.name': '名称', 'proposal.brand': '品牌（可选）', 'proposal.amount': '分量', 'proposal.unit': '单位',
+  'proposal.kind': '收藏类型', 'proposal.food': '食物', 'proposal.meal': '套餐', 'proposal.mealType': '餐次',
+  'proposal.workoutType': '运动类型', 'proposal.note': '备注', 'proposal.duration': '时长（分钟）', 'proposal.calories': '热量（kcal）',
+  'proposal.confirm': '确认保存', 'proposal.cancel': '取消提案', 'proposal.cancelled': '已取消，未保存',
+  'proposal.saved': '已保存', 'proposal.saving': '保存中…', 'proposal.invalid': '请检查名称、日期、分量和数值范围。',
+  'proposal.error': '暂时无法确认保存结果。请重试原提案，不会重复记录。',
+  'proposal.conflict': '这条提案已用不同内容保存。请查看现有记录后再修改，不能覆盖重试。',
   // nav
   'nav.today': '今日',
   'nav.settings': '设置',
@@ -293,6 +303,16 @@ const zh: Dict = {
 }
 
 const en: Dict = {
+  'proposal.title': 'Proposal for review',
+  'proposal.refreshError': 'The record was saved, but refreshing the list failed.',
+  'proposal.estimate': 'AI estimate. Edit before confirming. If you change the portion, review the nutrition values too.',
+  'proposal.name': 'Name', 'proposal.brand': 'Brand (optional)', 'proposal.amount': 'Amount', 'proposal.unit': 'Unit',
+  'proposal.kind': 'Favorite type', 'proposal.food': 'Food', 'proposal.meal': 'Meal', 'proposal.mealType': 'Meal type',
+  'proposal.workoutType': 'Workout type', 'proposal.note': 'Note', 'proposal.duration': 'Duration (minutes)', 'proposal.calories': 'Calories (kcal)',
+  'proposal.confirm': 'Confirm and save', 'proposal.cancel': 'Cancel proposal', 'proposal.cancelled': 'Cancelled; nothing saved',
+  'proposal.saved': 'Saved', 'proposal.saving': 'Saving…', 'proposal.invalid': 'Check the name, date, portion and numeric ranges.',
+  'proposal.error': 'The save result is uncertain. Retry the same proposal safely without duplicating it.',
+  'proposal.conflict': 'This proposal was saved with different content. Review the existing record before editing it; retry cannot overwrite it.',
   'nav.today': 'Today',
   'nav.settings': 'Settings',
   'nav.logMeal': 'Log meal',

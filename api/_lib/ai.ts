@@ -4,6 +4,7 @@ import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { recognitionSchema as recogSchema } from './contracts.js'
 import { lookupFoods } from './rag.js'
+import { nutritionRatio } from './retrieval.js'
 
 // ══════════════════════════════════════════════════════════════
 // 切换 AI 只需改下面这一行 MODEL（对应的 key 放到 .env.local / Vercel 环境变量）：
@@ -145,12 +146,12 @@ ${nameRule}
   // RAG 校准：命中营养库且为重量单位时，用库里的精准值按分量换算覆盖模型估算
   let items = object.items
   try {
-    const matches = await lookupFoods(items.map((it) => it.name), abortSignal)
+    const matches = await lookupFoods(items.map((it) => ({ name: it.name, unit: it.unit })), abortSignal)
     const r1 = (n: number) => Math.round(n * 10) / 10
     items = items.map((it, i) => {
       const m = matches[i]
-      if (m && m.matched && (it.unit === 'g' || it.unit === 'ml') && it.amount > 0) {
-        const k = it.amount / m.baseAmount
+      const k = m?.matched ? nutritionRatio(it.amount, it.unit, m.baseAmount, m.unit) : null
+      if (m && k !== null) {
         return {
           ...it,
           protein: r1(m.protein * k),

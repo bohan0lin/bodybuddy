@@ -54,7 +54,7 @@ export function createEndpoint(endpoint: Endpoint) {
         const input = requests.assistant.parse(parsed.data)
         const context = await loadContext(identity, input.date, input.hour)
         const { assistantChat } = await import('./assistant.js')
-        result = await assistantChat({ messages: input.messages, context, lang: input.lang }, lifetime.signal)
+        result = await assistantChat({ messages: input.messages, context, lang: input.lang, date: input.date }, lifetime.signal)
       } else if (endpoint === 'suggest') {
         const input = requests.suggest.parse(parsed.data)
         const context = await loadContext(identity, input.date, input.hour)
@@ -67,7 +67,7 @@ export function createEndpoint(endpoint: Endpoint) {
       } else if (endpoint === 'lookup') {
         const input = requests.lookup.parse(parsed.data)
         const { lookupFoods } = await import('./rag.js')
-        const [match] = await lookupFoods([input.name], lifetime.signal)
+        const [match] = await lookupFoods([input], lifetime.signal)
         result = { match }
       } else {
         const input = requests.knowledge.parse(parsed.data)

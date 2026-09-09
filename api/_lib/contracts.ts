@@ -19,8 +19,10 @@ export const actionSchema = z.discriminatedUnion('type', [
   saveInputSchema.extend({ type: z.literal('save') }).strict(),
   workoutInputSchema.omit({ type: true }).extend({ type: z.literal('workout'), workoutType }).strict(),
 ])
+export const proposalSchema = z.object({ actionId: z.uuid(), date: z.iso.date(), action: actionSchema }).strict()
+export type ActionProposal = z.infer<typeof proposalSchema>
 export const recognitionSchema = z.object({ items: z.array(z.object({ name, amount, unit, ...nutritionShape }).strict()).max(5) }).strict()
-export const foodMatchSchema = z.object({ query: name, matched: z.boolean(), name, nameEn: name.nullable(), unit, baseAmount: amount, ...nutritionShape, distance: z.number().min(0).max(2) }).strict()
+export const foodMatchSchema = z.object({ query: name, matched: z.boolean(), name, nameEn: name.nullable(), unit, baseAmount: amount, ...nutritionShape, distance: z.number().min(0).max(2), method: z.enum(['exact','semantic']).optional(), source: z.string().max(500).optional() }).strict()
 export const knowledgeSchema = z.object({ relevant: z.boolean(), title: z.string().max(200), content: z.string().max(8000), tags: z.string().max(500) }).strict()
 const lang = z.enum(['zh', 'en']).optional()
 const clock = { date: z.iso.date(), hour: z.number().int().min(0).max(23) }
@@ -32,11 +34,11 @@ export const requests = {
   assistant: z.object({ messages: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(8000), image: imageUrl.optional() }).strict()).min(1).max(40).refine((messages) => messages.at(-1)?.role === 'user' && messages.every((m) => !m.image || m.role === 'user')), ...clock, lang }).strict(),
   suggest: z.object({ ...clock, mode: z.enum(['general', 'library']).optional(), lang }).strict(),
   recognize: z.object({ image: base64, mediaType: mime, lang }).strict(),
-  lookup: z.object({ name }).strict(),
+  lookup: z.object({ name, brand: name.optional(), preparation: name.optional(), unit: unit.optional() }).strict(),
   knowledge: z.object({ text: z.string().trim().min(1).max(8000), lang }).strict(),
 }
 export const responses = {
-  assistant: z.object({ reply: z.string().max(16000), actions: z.array(actionSchema).max(12) }).strict(),
+  assistant: z.object({ reply: z.string().max(16000), actions: z.array(proposalSchema).max(12) }).strict(),
   suggest: z.object({ text: z.string().max(16000) }).strict(),
   recognize: recognitionSchema,
   lookup: z.object({ match: foodMatchSchema.nullable() }).strict(),

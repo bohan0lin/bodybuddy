@@ -202,6 +202,10 @@ a {
   position: relative;
 }
 
+.proposal-card { width: min(100%, 390px); margin: 8px 0 0; padding: 16px; }
+.proposal-card .field { min-width: 0; display: flex; flex-direction: column; }
+.proposal-card input, .proposal-card select { width: 100%; min-width: 0; }
+
 .page {
   flex: 1 0 auto;
   /* Navigation occupies its own row; only content spacing belongs here. */
