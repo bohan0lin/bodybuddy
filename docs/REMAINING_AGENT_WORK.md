@@ -2,16 +2,43 @@
 
 Updated: 2026-09-09
 
-This document lists work that is still required before the resume bullets can be presented as verified outcomes. The current implementation branch has not been committed, pushed, or deployed.
+This document lists work that is still required before the resume bullets can be presented as verified outcomes.
 
-## 1. Finish local verification after the latest edits
+Sections 1 and 6 are complete on branch `codex/agent-proposals-evaluations`
+(`a931de2`, `08f1ba8`), which is pushed but not merged or deployed.
 
-- Run the full unit/component test suite again.
-- Run the full local Supabase integration suite again.
-- Run the 15 proposal E2E scenarios in both desktop and mobile Chromium again after the latest component changes.
-- Run typecheck, API typecheck, lint, production build, generated database type check, and `git diff --check`.
-- Review the final diff for accidental changes, unfinished English comments, and generated-file drift.
-- Commit the finished work in focused English commits without AI attribution.
+Every remaining section is blocked on something only the account owner can
+supply, not on further code:
+
+| Section | Blocked on |
+| --- | --- |
+| 2. Staging environment | A Supabase project and Vercel Preview variables created under the owner's accounts |
+| 3. iPhone PWA acceptance | A physical iPhone and the staging URL from section 2 |
+| 4. Retrieval experiment | An embedding provider key to build the holdout catalog |
+| 5. Three-model evaluation | Provider keys and the budget for paid model calls |
+| 7. Timing study | Five consenting human testers |
+| 8. Production release | Sections 2 and 3, plus explicit approval |
+
+## 1. Finish local verification after the latest edits — done 2026-09-09
+
+Run against the disposable local Supabase stack on `127.0.0.1:54321`. No hosted
+project or production data was involved.
+
+- Unit/component suite: 147 tests in 21 files passed.
+- Local Supabase integration suite: 33 tests passed, covering idempotency,
+  content conflicts, concurrent confirmation, cross-user isolation, request
+  limits and retrieval boundaries.
+- Proposal E2E: 30 runs passed (15 scenarios in desktop and mobile Chromium).
+- Lint, typecheck, API typecheck, production build, generated database type
+  check and `git diff --check` all passed; all nine migrations applied to a
+  fresh local database and the generated types matched.
+- Diff reviewed: no debug leftovers, no Chinese comments in added lines, no
+  credentials, and report/result directories are ignored rather than committed.
+- Committed as two focused English commits authored only by the repository
+  owner, with no AI attribution.
+
+Re-run this section after any further code change; the results above describe
+the tree at `08f1ba8` only.
 
 ## 2. Create a real hosted staging environment
 
@@ -63,9 +90,13 @@ Do not call Chromium mobile tests real iPhone acceptance.
 - Mark rate-limited, unavailable, or incomplete runs inconclusive.
 - Publish a comparison report only after every compared configuration has complete scored results.
 
-## 6. Complete the 15-scenario evidence package
+## 6. Complete the 15-scenario evidence package — done 2026-09-09
 
-The automated proposal suite currently covers 15 scenarios, but the final run must be repeated after the last code edit and its report retained.
+All 15 scenarios below passed in desktop and mobile Chromium at `08f1ba8`
+(30 runs, no failures). The runner refuses to start unless the disposable local
+Supabase stack is serving on `127.0.0.1:54321`, so no hosted project was
+reachable during the run. Only test code is committed; the report, results and
+any authentication state stay ignored.
 
 - Confirm proposal generation performs no writes.
 - Confirm edited meal, favorite, and workout proposals persist edited values.
