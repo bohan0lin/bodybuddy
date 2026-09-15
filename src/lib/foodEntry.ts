@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { Meal } from '../types'
+import { withRecordTimeout } from './recordMutations'
 
 export type FoodDraft = Pick<Meal, 'name' | 'brand' | 'protein' | 'carbs' | 'fat' | 'calories'> & { amount: number; unit: string }
 
@@ -33,6 +34,6 @@ export async function uploadFoodPhoto(dataUrl: string): Promise<string> {
 }
 
 export async function recordFoodEntry(id: string, meal: Omit<Meal, 'id' | 'createdAt'>, favorite: boolean): Promise<void> {
-  const { error } = await supabase.rpc('record_food_entry', { p_id: id, p_meal: { ...meal }, p_favorite: favorite })
+  const { error } = await withRecordTimeout(signal => supabase.rpc('record_food_entry', { p_id: id, p_meal: { ...meal }, p_favorite: favorite }).abortSignal(signal))
   if (error) throw new Error('Could not save this meal. Please retry.')
 }

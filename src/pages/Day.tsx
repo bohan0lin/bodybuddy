@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { sumMacros } from '../lib/nutrition'
@@ -12,6 +12,20 @@ export default function Day() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t, lang } = useT()
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const removing = useRef(false)
+  async function remove(kind: 'meal' | 'workout', id: string) {
+    if (removing.current) return
+    const prompt = kind === 'meal'
+      ? (lang === 'zh' ? '删除这条饮食记录？' : 'Delete this meal?')
+      : (lang === 'zh' ? '删除这条运动记录？' : 'Delete this workout?')
+    if (!window.confirm(prompt)) return
+    removing.current = true; setDeleting(true); setDeleteError('')
+    try { await (kind === 'meal' ? deleteMeal(id) : deleteWorkout(id)) }
+    catch { setDeleteError(lang === 'zh' ? '未能确认删除结果，请重试。' : 'Could not confirm the deletion. Please retry.') }
+    finally { removing.current = false; setDeleting(false) }
+  }
   const kcalLabel = t('today.kcal')
   const back = (location.state as { back?: string } | null)?.back ?? '/'
   const backLabel = back === '/calendar' ? t('common.backCalendar') : t('common.backToday')
@@ -42,6 +56,9 @@ export default function Day() {
 
   return (
     <div className="page">
+      {deleteError && <p role="alert" className="food-error">{deleteError}</p>}
+      {deleting && <p role="status">{lang === 'zh' ? '删除中…' : 'Deleting…'}</p>}
+      <fieldset disabled={deleting} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <button className="btn-ghost" onClick={() => navigate(back)} style={{ padding: 0, marginBottom: 18, fontSize: 14, color: 'var(--text-dim)' }}>
         {backLabel}
       </button>
@@ -88,7 +105,7 @@ export default function Day() {
                 </div>
               </button>
               <button className="btn-ghost" style={{ fontSize: 13, padding: '6px 8px', color: 'var(--accent)' }} onClick={() => goEdit(m)}>{t('log.edit')}</button>
-              <button className="btn-ghost" aria-label="delete" style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteMeal(m.id)}>×</button>
+              <button className="btn-ghost" aria-label={lang === 'zh' ? `删除 ${m.name}` : `Delete ${m.name}`} style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => remove('meal', m.id)}>×</button>
             </div>
           ))
         )}
@@ -120,11 +137,12 @@ export default function Day() {
                   {w.durationMin} {t('workout.min')} · {Math.round(w.calories)} {kcalLabel}
                 </div>
               </button>
-              <button className="btn-ghost" aria-label="delete" style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => deleteWorkout(w.id)}>×</button>
+              <button className="btn-ghost" aria-label={lang === 'zh' ? `删除 ${t('workout.type.' + w.type)}` : `Delete ${t('workout.type.' + w.type)}`} style={{ fontSize: 20, padding: 6, color: 'var(--text-muted)' }} onClick={() => remove('workout', w.id)}>×</button>
             </div>
           ))
         )}
       </div>
+      </fieldset>
     </div>
   )
 }

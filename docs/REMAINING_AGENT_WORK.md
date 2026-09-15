@@ -1,23 +1,35 @@
 # Remaining Agent and Evidence Work
 
-Updated: 2026-09-09
+Updated: 2026-09-15
+
+For the current code audit, Git status snapshot, and revised engineering priorities,
+see [Technical improvement plan](./TECHNICAL_IMPROVEMENT_PLAN.md). The verification
+results below remain historical results for the specified commit, not a new run.
+
+The first uncommitted meal/workout reliability batch is documented in
+[Mutation reliability](./MUTATION_RELIABILITY.md), including its current test
+results and pending database-backed browser verification.
 
 This document lists work that is still required before the resume bullets can be presented as verified outcomes.
 
 Sections 1 and 6 are complete on branch `codex/agent-proposals-evaluations`
 (`a931de2`, `08f1ba8`), which is pushed but not merged or deployed.
 
-Every remaining section is blocked on something only the account owner can
-supply, not on further code:
+Remaining work includes engineering and data preparation, as well as account,
+device, and budget dependencies. It is not all blocked on the account owner:
 
-| Section | Blocked on |
+| Section | Remaining work and dependencies |
 | --- | --- |
-| 2. Staging environment | A Supabase project and Vercel Preview variables created under the owner's accounts |
-| 3. iPhone PWA acceptance | A physical iPhone and the staging URL from section 2 |
-| 4. Retrieval experiment | An embedding provider key to build the holdout catalog |
-| 5. Three-model evaluation | Provider keys and the budget for paid model calls |
+| 2. Staging environment | Safe seed/configuration work, plus Supabase and Vercel account access |
+| 3. iPhone PWA acceptance | Reproduce and fix the unresolved keyboard issue using a physical iPhone and staging URL |
+| 4. Retrieval experiment | Review catalog provenance/metadata, freeze a holdout, fingerprint the actual catalog, define a faithful baseline, and supply embedding access |
+| 5. Three-model evaluation | Isolate all eval modes, complete suite coverage and model configuration, then run with provider keys and a defined budget |
 | 7. Timing study | Five consenting human testers |
 | 8. Production release | Sections 2 and 3, plus explicit approval |
+
+Outside this evidence checklist, ordinary store mutations still need reliable
+failure handling. Managed memory, durable task recovery, and measured context
+optimization are future work; existing action receipts do not implement them.
 
 ## 1. Finish local verification after the latest edits — done 2026-09-09
 

@@ -7,7 +7,6 @@ import { postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { peekPendingPhoto, takePendingPhoto } from '../lib/photoHandoff'
 import { combineFoods, recordFoodEntry, scaleFood, uploadFoodPhoto, type FoodDraft } from '../lib/foodEntry'
-import { supabase } from '../lib/supabase'
 import AppIcon from '../components/AppIcon'
 import FoodPhoto from '../components/FoodPhoto'
 import { MEAL_TYPES, type Meal, type MealType, type SavedItem } from '../types'
@@ -20,18 +19,21 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
 }) {
   const { lang, t } = useT()
   const zh = lang === 'zh'
-  const { reload } = useStore()
+  const { reload, updateSavedItem, deleteSavedItem } = useStore()
   const [food, setFood] = useState(initial)
   const [base, setBase] = useState(initial)
   const [type, setType] = useState<MealType>(editMeal?.type ?? guessType())
   const [calibrating, setCalibrating] = useState(!initial.name)
   const [favorite, setFavorite] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [attempted, setAttempted] = useState(false)
   const [error, setError] = useState('')
   const [cover, setCover] = useState(photo)
   const uploaded = useRef<string | undefined>(undefined)
   const id = useRef(editMeal?.id ?? crypto.randomUUID())
   const saving = useRef(false)
+  const submitted = useRef<{ meal: Omit<Meal, 'id' | 'createdAt'>; favorite: boolean } | null>(null)
+  const submittedFavorite = useRef<Partial<Omit<SavedItem, 'id'>> | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
   const valid = food.name.trim().length > 0 && food.name.length <= 200 && food.unit.trim().length > 0
     && Number.isFinite(food.amount) && food.amount > 0 && food.amount <= 20000
@@ -47,16 +49,22 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
         path = uploaded.current
       }
       if (editSaved) {
-        const { error } = await supabase.from('saved_items').update({ name: food.name.trim(), brand: food.brand || null,
-          unit: food.unit, base_amount: food.amount, protein: food.protein, carbs: food.carbs,
-          fat: food.fat, calories: food.calories, photo_url: path ?? null }).eq('id', editSaved.id).select('id').single()
-        if (error) throw error
+        submittedFavorite.current ??= { name: food.name.trim(), brand: food.brand || undefined,
+          unit: food.unit, baseAmount: food.amount, protein: food.protein, carbs: food.carbs,
+          fat: food.fat, calories: food.calories, photoUrl: path }
+        setAttempted(true)
+        await updateSavedItem(editSaved.id, submittedFavorite.current)
       } else {
-        await recordFoodEntry(id.current, { ...food, name: food.name.trim(), type, date: editMeal?.date ?? date ?? todayStr(), photoUrl: path }, favorite)
+        // Freeze only once the upload succeeds and the database request is ready.
+        submitted.current ??= { meal: { ...food, name: food.name.trim(), type, date: editMeal?.date ?? date ?? todayStr(), photoUrl: path }, favorite }
+        setAttempted(true)
+        await recordFoodEntry(id.current, submitted.current.meal, submitted.current.favorite)
       }
-      onDone(); reload()
+      onDone(); if (!editSaved) reload()
     } catch {
-      setError(zh ? '保存失败，请重试。当前内容已保留。' : 'Could not save. Your changes are still here. Please retry.')
+      setError(submitted.current || submittedFavorite.current
+        ? (zh ? '未能确认保存结果。请重试本次内容，成功后可继续编辑。' : 'Could not confirm the save. Retry these changes; you can edit after saving.')
+        : (zh ? '保存失败，请重试。当前内容已保留。' : 'Could not save. Your changes are still here. Please retry.'))
     } finally { saving.current = false; setBusy(false) }
   }
 
@@ -64,19 +72,19 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
     {cover && <FoodPhoto path={cover} alt={food.name || (zh ? '食物照片' : 'Food photo')} className="food-hero" />}
     {editSaved && <>
       <input ref={photoInput} type="file" accept="image/*" hidden onChange={async (e) => {
-        const file = e.target.files?.[0]; e.target.value = ''; if (!file) return
-        setBusy(true)
+        const file = e.target.files?.[0]; e.target.value = ''; if (!file || saving.current || attempted) return
+        saving.current = true; setBusy(true)
         try { const image = await fileToResizedBase64(file); setCover(`data:${image.mediaType};base64,${image.data}`); uploaded.current = undefined }
         catch { setError(zh ? '无法读取图片，请选择 JPEG、PNG 或 WebP。' : 'Cannot read this image. Choose JPEG, PNG or WebP.') }
-        finally { setBusy(false) }
+        finally { saving.current = false; setBusy(false) }
       }} />
-      <button className="btn" disabled={busy} onClick={() => photoInput.current?.click()}>{zh ? '更换收藏封面' : 'Change favorite photo'}</button>
+      <button className="btn" disabled={busy || attempted} onClick={() => photoInput.current?.click()}>{zh ? '更换收藏封面' : 'Change favorite photo'}</button>
     </>}
     <div className="float-card food-summary">
       <p className="eyebrow">{editSaved ? (zh ? '收藏食物' : 'FAVORITE FOOD') : (zh ? '确认这一餐' : 'REVIEW YOUR MEAL')}</p>
       <h2>{food.name || (zh ? '填写食物信息' : 'Add food details')}</h2>
       <label className="food-amount">{zh ? '份量' : 'Amount'}
-        <input aria-label={zh ? '份量' : 'Amount'} type="number" min="0.1" step="any" value={food.amount || ''} disabled={busy}
+        <input aria-label={zh ? '份量' : 'Amount'} type="number" min="0.1" step="any" value={food.amount || ''} disabled={busy || attempted}
           onChange={(e) => setFood(base.amount > 0 ? scaleFood({ ...base, name: food.name, brand: food.brand, unit: food.unit }, Number(e.target.value)) : { ...food, amount: Number(e.target.value) })} />
         <span>{food.unit === 'serving' || food.unit === '份' ? (zh ? '份' : 'serving') : food.unit}</span>
       </label>
@@ -85,9 +93,9 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
         <span>{t(`macro.${key}`)}</span><strong className="num">{Math.round(food[key] * 10) / 10}<small> g</small></strong>
       </div>)}</div>
     </div>
-    {!editSaved && <div className="food-meal-types">{MEAL_TYPES.map((mt) => <button key={mt} disabled={busy}
+    {!editSaved && <div className="food-meal-types">{MEAL_TYPES.map((mt) => <button key={mt} disabled={busy || attempted}
       className={`chip${mt === type ? ' active' : ''}`} onClick={() => setType(mt)}>{t(`meal.${mt}`)}</button>)}</div>}
-    {calibrating && <fieldset className="card food-calibration" disabled={busy}>
+    {calibrating && <fieldset className="card food-calibration" disabled={busy || attempted}>
       <legend>{zh ? '校准营养数据' : 'Calibrate nutrition'}</legend>
       <label className="field"><span>{zh ? '食物名称' : 'Food name'}</span><input value={food.name} maxLength={200} onChange={(e) => setFood({ ...food, name: e.target.value })} /></label>
       <label className="field"><span>{zh ? '品牌（可选）' : 'Brand (optional)'}</span><input value={food.brand ?? ''} onChange={(e) => setFood({ ...food, brand: e.target.value })} /></label>
@@ -98,23 +106,23 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
       </label>)}</div>
       <button className="btn" disabled={!valid} onClick={() => { setBase(food); setCalibrating(false) }}>{zh ? '保存校准' : 'Apply calibration'}</button>
     </fieldset>}
-    {!editSaved && <label className="food-favorite"><input type="checkbox" checked={favorite} disabled={busy} onChange={(e) => setFavorite(e.target.checked)} />
+    {!editSaved && <label className="food-favorite"><input type="checkbox" checked={favorite} disabled={busy || attempted} onChange={(e) => setFavorite(e.target.checked)} />
       {zh ? '保存到快捷食物' : 'Save to favorites'}{cover ? (zh ? '（包含照片）' : ' with photo') : ''}</label>}
     {error && <p role="alert" className="food-error">{error}</p>}
     <div className="food-actions">
       <button className="btn btn-primary" disabled={busy || !valid || calibrating} onClick={save}>{busy ? (zh ? '保存中…' : 'Saving…') : editSaved || editMeal ? (zh ? '保存修改' : 'Save changes') : (zh ? '记录' : 'Log meal')}</button>
-      <button className="btn" disabled={busy} onClick={() => setCalibrating(true)}>{zh ? '校准' : 'Calibrate'}</button>
+      <button className="btn" disabled={busy || attempted} onClick={() => setCalibrating(true)}>{zh ? '校准' : 'Calibrate'}</button>
     </div>
     <button className="btn-ghost food-back" disabled={busy} onClick={onCancel}>{t('common.cancel')}</button>
-    {editSaved && <button className="btn-ghost food-back" disabled={busy} onClick={async () => {
+    {editSaved && <button className="btn-ghost food-back" disabled={busy || attempted} onClick={async () => {
+      if (saving.current || attempted) return
       if (!window.confirm(zh ? '移除此收藏？已有的饮食记录会保留。' : 'Remove this favorite? Existing meal records will remain.')) return
-      setBusy(true); setError('')
+      saving.current = true; setBusy(true); setError('')
       try {
-        const { error } = await supabase.from('saved_items').delete().eq('id', editSaved.id).select('id').single()
-        if (error) throw error
-        onDone(); reload()
-      } catch { setError(zh ? '删除失败，请重试。' : 'Could not remove favorite. Please retry.') }
-      finally { setBusy(false) }
+        await deleteSavedItem(editSaved.id)
+        onDone()
+      } catch { setError(zh ? '未能确认删除结果，请重试。' : 'Could not confirm the deletion. Please retry.') }
+      finally { saving.current = false; setBusy(false) }
     }}>{zh ? '移除收藏' : 'Remove favorite'}</button>}
   </div>
 }

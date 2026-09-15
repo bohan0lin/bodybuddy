@@ -57,3 +57,90 @@ test('15 photo conversation still requires explicit confirmation',async({page})=
   await page.locator('input[type=file]').setInputFiles({name:'synthetic.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6aV8AAAAASUVORK5CYII=','base64')})
   await expect(page.getByText('Photo attached')).toBeVisible(); await propose(page); expect(await records()).toHaveLength(0); await confirm(page); expect(await records()).toHaveLength(1)
 })
+
+test('16 manual workout retries a committed insert without duplicating it', async ({ page }) => {
+  let first = true
+  await page.route('**/rest/v1/workouts**', async route => {
+    if (first && route.request().method() === 'POST') {
+      first = false
+      await route.fetch()
+      await route.abort('failed')
+    } else await route.continue()
+  })
+  await page.goto('/workout')
+  await page.getByLabel('Duration', { exact: true }).fill('30')
+  await page.getByRole('button', { name: 'Save workout', exact: true }).dblclick()
+  await expect(page.getByRole('alert')).toContainText('Could not confirm')
+  expect(await records('workouts')).toHaveLength(1)
+  await expect(page.getByLabel('Duration', { exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page).toHaveURL('http://127.0.0.1:5182/')
+  expect(await records('workouts')).toHaveLength(1)
+})
+
+test('17 manual workout retry cannot overwrite a newer saved value', async ({ page }) => {
+  let first = true
+  await page.route('**/rest/v1/workouts**', async route => {
+    if (first && route.request().method() === 'POST') {
+      first = false
+      await route.fetch()
+      await route.abort('failed')
+    } else await route.continue()
+  })
+  await page.goto('/workout')
+  await page.getByLabel('Duration', { exact: true }).fill('30')
+  await page.getByRole('button', { name: 'Save workout', exact: true }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  const [saved] = await records('workouts')
+  const changed = await client.from('workouts').update({ duration_min: 45 }).eq('id', saved.id)
+  expect(changed.error).toBeNull()
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('different saved content')
+  expect((await records('workouts'))[0].duration_min).toBe(45)
+})
+
+test('18 workout edits remain on screen after failure and can clear notes', async ({ page }) => {
+  expect((await client.from('workouts').insert({ id, user_id: userId, date: '2026-09-15', type: 'walk', duration_min: 30, calories: 100, note: 'Old note' })).error).toBeNull()
+  await page.goto('/day/2026-09-15')
+  await page.getByRole('button').filter({ hasText: 'Old note' }).click()
+  await page.getByLabel('Note (what you trained)', { exact: true }).fill('')
+  await page.getByLabel('Duration', { exact: true }).fill('45')
+  let first = true
+  await page.route('**/rest/v1/workouts**', async route => {
+    if (first && route.request().method() === 'PATCH') { first = false; await route.abort('failed') }
+    else await route.continue()
+  })
+  await page.getByRole('button', { name: 'Update workout', exact: true }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect((await records('workouts'))[0].duration_min).toBe(30)
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page).toHaveURL(/\/day\/2026-09-15$/)
+  expect((await records('workouts'))[0]).toMatchObject({ duration_min: 45, note: null })
+})
+
+for (const table of ['meals', 'workouts']) {
+  test(`day ${table} deletion handles a lost acknowledgement and retry`, async ({ page }) => {
+    const seeded = table === 'meals'
+      ? await client.from('meals').insert({ id, user_id: userId, date: '2026-09-15', name: 'Delete test rice', type: 'lunch', protein: 3, carbs: 28, fat: 1, calories: 130 })
+      : await client.from('workouts').insert({ id, user_id: userId, date: '2026-09-15', type: 'walk', duration_min: 30, calories: 100 })
+    expect(seeded.error).toBeNull()
+    let first = true
+    await page.route(`**/rest/v1/${table}**`, async route => {
+      if (first && route.request().method() === 'DELETE') {
+        first = false
+        await route.fetch()
+        await route.abort('failed')
+      } else await route.continue()
+    })
+    page.on('dialog', dialog => dialog.accept())
+    await page.goto('/day/2026-09-15')
+    const button = page.getByRole('button', { name: /^Delete / })
+    await button.click()
+    await expect(page.getByRole('alert')).toContainText('Could not confirm the deletion')
+    expect(await records(table)).toHaveLength(0)
+    await expect(button).toBeVisible()
+    await button.click()
+    await expect(button).toHaveCount(0)
+    await expect(page.getByRole('alert')).toHaveCount(0)
+  })
+}

@@ -2,9 +2,9 @@ import { toWeight, toMeal, toSaved, toWorkout, toKnowledge, toProfile } from './
 import type { DatabaseUpdate } from '../lib/database'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { type KnowledgeItem, type Meal, type Profile, type SavedItem, type WeightLog, type Workout } from '../types'
-import { estimateCalories } from '../lib/nutrition'
 import { hasHydrationError, shouldInsertDefaultProfile } from '../lib/hydration'
 import { supabase } from '../lib/supabase'
+import { insertRecord, withRecordTimeout } from '../lib/recordMutations'
 
 // ── Supabase 数据层 ───────────────────────────────────────────
 // 登录后按用户拉取数据存入内存，操作时乐观更新本地并写回云端。
@@ -28,29 +28,24 @@ interface AppData {
   knowledgeItems: KnowledgeItem[]
 }
 
-// ── 行 ⇄ 对象映射（数据库 snake_case ⇄ 前端 camelCase）──────────
-function uid(): string {
-  return crypto.randomUUID()
-}
-
 interface StoreValue extends AppData {
   loading: boolean
   hydrationError: boolean
   reload: () => void
   refreshRecords: () => Promise<void>
-  addMeal: (m: Omit<Meal, 'id' | 'createdAt'>) => void
-  updateMeal: (id: string, patch: Partial<Omit<Meal, 'id' | 'createdAt'>>) => void
-  deleteMeal: (id: string) => void
+  addMeal: (m: Omit<Meal, 'id' | 'createdAt'>, id: string) => Promise<void>
+  updateMeal: (id: string, patch: Partial<Omit<Meal, 'id' | 'createdAt'>>) => Promise<void>
+  deleteMeal: (id: string) => Promise<void>
   upsertWeight: (w: Omit<WeightLog, 'id'>) => Promise<void>
   updateProfile: (p: Partial<Profile>) => Promise<void>
-  addSavedItem: (s: Omit<SavedItem, 'id'>) => void
-  updateSavedItem: (id: string, patch: Partial<Omit<SavedItem, 'id'>>) => void
-  deleteSavedItem: (id: string) => void
-  addWorkout: (w: Omit<Workout, 'id' | 'createdAt'>) => void
-  updateWorkout: (id: string, patch: Partial<Omit<Workout, 'id' | 'createdAt'>>) => void
-  deleteWorkout: (id: string) => void
-  addKnowledge: (k: { title: string; content: string; tags?: string }) => void
-  deleteKnowledge: (id: string) => void
+  updateSavedItem: (id: string, patch: Partial<Omit<SavedItem, 'id'>>) => Promise<void>
+  deleteSavedItem: (id: string) => Promise<void>
+  addWorkout: (w: Omit<Workout, 'id' | 'createdAt'>, id: string) => Promise<void>
+  updateWorkout: (id: string, patch: Partial<Omit<Workout, 'id' | 'createdAt'>>) => Promise<void>
+  deleteWorkout: (id: string) => Promise<void>
+  addKnowledge: (k: { title: string; content: string; tags?: string }, id: string) => Promise<void>
+  updateKnowledge: (id: string, k: { title: string; content: string; tags?: string }) => Promise<void>
+  deleteKnowledge: (id: string) => Promise<void>
   latestWeight: WeightLog | undefined
   prevWeight: WeightLog | undefined
 }
@@ -71,6 +66,18 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
   const [reloadKey, setReloadKey] = useState(0)
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
   const refreshSequence = useRef(0)
+  const pendingRecords = useRef(new Map<string, { signature: string; promise: Promise<void> }>())
+  const mutateRecord = useCallback((key: string, signature: string, work: (signal: AbortSignal) => Promise<void>): Promise<void> => {
+    const pending = pendingRecords.current.get(key)
+    if (pending) return pending.signature === signature ? pending.promise : Promise.reject(new Error('Record is busy'))
+    ++refreshSequence.current
+    const promise = Promise.resolve().then(() => withRecordTimeout(work)).finally(() => {
+      ++refreshSequence.current
+      pendingRecords.current.delete(key)
+    })
+    pendingRecords.current.set(key, { signature, promise })
+    return promise
+  }, [])
   const refreshRecords = useCallback(async () => {
     const sequence = ++refreshSequence.current
     const [meals, workouts, saved] = await Promise.all([
@@ -79,7 +86,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       supabase.from('saved_items').select('*').eq('user_id', userId),
     ])
     if (meals.error || workouts.error || saved.error) throw new Error('Record refresh failed')
-    if (sequence === refreshSequence.current) setData(current => ({ ...current, meals: meals.data.map(toMeal), workouts: workouts.data.map(toWorkout), savedItems: saved.data.map(toSaved) }))
+    if (sequence === refreshSequence.current && pendingRecords.current.size === 0) setData(current => ({ ...current, meals: meals.data.map(toMeal), workouts: workouts.data.map(toWorkout), savedItems: saved.data.map(toSaved) }))
   }, [userId])
 
   // 登录后拉取该用户全部数据
@@ -151,14 +158,10 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
       reload,
       refreshRecords,
 
-      addMeal: (m) => {
-        const calories = m.calories || estimateCalories(m.protein, m.carbs, m.fat)
-        const meal: Meal = { ...m, calories, id: uid(), createdAt: new Date().toISOString() }
-        setData((d) => ({ ...d, meals: [...d.meals, meal] }))
-        supabase
-          .from('meals')
-          .insert({
-            id: meal.id,
+      addMeal: (m, id) => mutateRecord(`meals:${id}`, JSON.stringify(['create', m]), async signal => {
+        const meal = m
+        const saved = await insertRecord('meals', {
+            id,
             user_id: userId,
             date: meal.date,
             type: meal.type,
@@ -171,12 +174,12 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
             fat: meal.fat,
             calories: meal.calories,
             photo_url: meal.photoUrl ?? null,
-          })
-          .then(({ error }) => error && console.error('addMeal', error))
-      },
+          }, signal)
+        const confirmed = toMeal(saved)
+        setData(d => ({ ...d, meals: [...d.meals.filter(x => x.id !== id), confirmed] }))
+      }),
 
-      updateMeal: (id, patch) => {
-        setData((d) => ({ ...d, meals: d.meals.map((x) => (x.id === id ? { ...x, ...patch } : x)) }))
+      updateMeal: (id, patch) => mutateRecord(`meals:${id}`, JSON.stringify(['update', patch]), async signal => {
         const row: DatabaseUpdate<'meals'> = {}
         if (patch.photoUrl !== undefined) row.photo_url = patch.photoUrl || null
         if (patch.date !== undefined) row.date = patch.date
@@ -189,13 +192,17 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
         if (patch.carbs !== undefined) row.carbs = patch.carbs
         if (patch.fat !== undefined) row.fat = patch.fat
         if (patch.calories !== undefined) row.calories = patch.calories
-        supabase.from('meals').update(row).eq('id', id).then(({ error }) => error && console.error('updateMeal', error))
-      },
+        const result = await supabase.from('meals').update(row).eq('id', id).eq('user_id', userId).select('*').abortSignal(signal).single()
+        if (result.error || !result.data) throw new Error('Meal update failed')
+        const confirmed = toMeal(result.data)
+        setData(d => ({ ...d, meals: d.meals.map(x => x.id === id ? confirmed : x) }))
+      }),
 
-      deleteMeal: (id) => {
-        setData((d) => ({ ...d, meals: d.meals.filter((x) => x.id !== id) }))
-        supabase.from('meals').delete().eq('id', id).then(({ error }) => error && console.error('deleteMeal', error))
-      },
+      deleteMeal: (id) => mutateRecord(`meals:${id}`, 'delete', async signal => {
+        const { error } = await supabase.from('meals').delete().eq('id', id).eq('user_id', userId).abortSignal(signal)
+        if (error) throw new Error('Meal deletion failed')
+        setData(d => ({ ...d, meals: d.meals.filter(x => x.id !== id) }))
+      }),
 
       upsertWeight: async (w) => {
         const { data: saved, error } = await supabase
@@ -234,146 +241,89 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
         }
       },
 
-      addSavedItem: (s) => {
-        setData((d) => {
-          // 同类同名同品牌视为同一项 → 更新；否则新增
-          const idx = d.savedItems.findIndex(
-            (x) => x.kind === s.kind && x.name === s.name && (x.brand ?? '') === (s.brand ?? ''),
-          )
-          if (idx >= 0) {
-            const existing = d.savedItems[idx]
-            const next = [...d.savedItems]
-            next[idx] = { ...existing, ...s }
-            supabase
-              .from('saved_items')
-              .update({
-                brand: s.brand ?? null,
-                unit: s.unit,
-                base_amount: s.baseAmount,
-                protein: s.protein,
-                carbs: s.carbs,
-                fat: s.fat,
-                calories: s.calories,
-                note: s.note ?? null,
-              })
-              .eq('id', existing.id)
-              .then(({ error }) => error && console.error('updateSaved', error))
-            return { ...d, savedItems: next }
-          }
-          const item: SavedItem = { ...s, id: uid(), createdAt: new Date().toISOString() }
-          supabase
-            .from('saved_items')
-            .insert({
-              id: item.id,
-              user_id: userId,
-              kind: item.kind,
-              name: item.name,
-              brand: item.brand ?? null,
-              unit: item.unit,
-              base_amount: item.baseAmount,
-              protein: item.protein,
-              carbs: item.carbs,
-              fat: item.fat,
-              calories: item.calories,
-              note: item.note ?? null,
-              photo_url: item.photoUrl ?? null,
-            })
-            .then(({ error }) => error && console.error('addSaved', error))
-          return { ...d, savedItems: [item, ...d.savedItems] }
-        })
-      },
-
-      updateSavedItem: (id, patch) => {
-        setData((d) => ({
-          ...d,
-          savedItems: d.savedItems.map((x) => (x.id === id ? { ...x, ...patch } : x)),
-        }))
+      updateSavedItem: (id, patch) => mutateRecord(`saved_items:${id}`, JSON.stringify(['update', patch]), async signal => {
         const row: DatabaseUpdate<'saved_items'> = {}
-        if (patch.photoUrl !== undefined) row.photo_url = patch.photoUrl || null
+        if ('photoUrl' in patch) row.photo_url = patch.photoUrl || null
         if (patch.kind !== undefined) row.kind = patch.kind
         if (patch.name !== undefined) row.name = patch.name
-        if (patch.brand !== undefined) row.brand = patch.brand || null
+        if ('brand' in patch) row.brand = patch.brand || null
         if (patch.unit !== undefined) row.unit = patch.unit
         if (patch.baseAmount !== undefined) row.base_amount = patch.baseAmount
         if (patch.protein !== undefined) row.protein = patch.protein
         if (patch.carbs !== undefined) row.carbs = patch.carbs
         if (patch.fat !== undefined) row.fat = patch.fat
         if (patch.calories !== undefined) row.calories = patch.calories
-        if (patch.note !== undefined) row.note = patch.note || null
-        supabase.from('saved_items').update(row).eq('id', id).then(({ error }) => error && console.error('updateSavedItem', error))
-      },
+        if ('note' in patch) row.note = patch.note || null
+        const result = await supabase.from('saved_items').update(row).eq('id', id).eq('user_id', userId).select('*').abortSignal(signal).single()
+        if (result.error || !result.data) throw new Error('Favorite update failed')
+        const confirmed = toSaved(result.data)
+        setData(d => ({ ...d, savedItems: d.savedItems.map(x => x.id === id ? confirmed : x) }))
+      }),
 
-      deleteSavedItem: (id) => {
-        setData((d) => ({ ...d, savedItems: d.savedItems.filter((x) => x.id !== id) }))
-        supabase.from('saved_items').delete().eq('id', id).then(({ error }) => error && console.error('deleteSaved', error))
-      },
+      deleteSavedItem: (id) => mutateRecord(`saved_items:${id}`, 'delete', async signal => {
+        const { error } = await supabase.from('saved_items').delete().eq('id', id).eq('user_id', userId).abortSignal(signal)
+        if (error) throw new Error('Favorite deletion failed')
+        setData(d => ({ ...d, savedItems: d.savedItems.filter(x => x.id !== id) }))
+      }),
 
-      addWorkout: (w) => {
-        const workout: Workout = { ...w, id: uid(), createdAt: new Date().toISOString() }
-        setData((d) => ({ ...d, workouts: [...d.workouts, workout] }))
-        supabase
-          .from('workouts')
-          .insert({
-            id: workout.id,
+      addWorkout: (w, id) => mutateRecord(`workouts:${id}`, JSON.stringify(['create', w]), async signal => {
+        const workout = w
+        const saved = await insertRecord('workouts', {
+            id,
             user_id: userId,
             date: workout.date,
             type: workout.type,
             note: workout.note ?? null,
             duration_min: workout.durationMin,
             calories: workout.calories,
-          })
-          .then(({ error }) => error && console.error('addWorkout', error))
-      },
+          }, signal)
+        const confirmed = toWorkout(saved)
+        setData(d => ({ ...d, workouts: [...d.workouts.filter(x => x.id !== id), confirmed] }))
+      }),
 
-      updateWorkout: (id, patch) => {
-        setData((d) => ({ ...d, workouts: d.workouts.map((x) => (x.id === id ? { ...x, ...patch } : x)) }))
+      updateWorkout: (id, patch) => mutateRecord(`workouts:${id}`, JSON.stringify(['update', patch]), async signal => {
         const row: DatabaseUpdate<'workouts'> = {}
         if (patch.date !== undefined) row.date = patch.date
         if (patch.type !== undefined) row.type = patch.type
-        if (patch.note !== undefined) row.note = patch.note || null
+        if ('note' in patch) row.note = patch.note || null
         if (patch.durationMin !== undefined) row.duration_min = patch.durationMin
         if (patch.calories !== undefined) row.calories = patch.calories
-        supabase.from('workouts').update(row).eq('id', id).then(({ error }) => error && console.error('updateWorkout', error))
-      },
+        const result = await supabase.from('workouts').update(row).eq('id', id).eq('user_id', userId).select('*').abortSignal(signal).single()
+        if (result.error || !result.data) throw new Error('Workout update failed')
+        const confirmed = toWorkout(result.data)
+        setData(d => ({ ...d, workouts: d.workouts.map(x => x.id === id ? confirmed : x) }))
+      }),
 
-      deleteWorkout: (id) => {
-        setData((d) => ({ ...d, workouts: d.workouts.filter((x) => x.id !== id) }))
-        supabase.from('workouts').delete().eq('id', id).then(({ error }) => error && console.error('deleteWorkout', error))
-      },
+      deleteWorkout: (id) => mutateRecord(`workouts:${id}`, 'delete', async signal => {
+        const { error } = await supabase.from('workouts').delete().eq('id', id).eq('user_id', userId).abortSignal(signal)
+        if (error) throw new Error('Workout deletion failed')
+        setData(d => ({ ...d, workouts: d.workouts.filter(x => x.id !== id) }))
+      }),
 
-      addKnowledge: (k) => {
-        setData((d) => {
-          // 同标题视为同一条 → 更新；否则新增
-          const idx = d.knowledgeItems.findIndex((x) => x.title === k.title)
-          if (idx >= 0) {
-            const existing = d.knowledgeItems[idx]
-            const next = [...d.knowledgeItems]
-            next[idx] = { ...existing, content: k.content, tags: k.tags }
-            supabase
-              .from('knowledge')
-              .update({ content: k.content, tags: k.tags ?? null })
-              .eq('id', existing.id)
-              .then(({ error }) => error && console.error('updateKnowledge', error))
-            return { ...d, knowledgeItems: next }
-          }
-          const item: KnowledgeItem = { id: uid(), title: k.title, content: k.content, tags: k.tags, createdAt: new Date().toISOString() }
-          supabase
-            .from('knowledge')
-            .insert({ id: item.id, user_id: userId, title: item.title, content: item.content, tags: item.tags ?? null })
-            .then(({ error }) => error && console.error('addKnowledge', error))
-          return { ...d, knowledgeItems: [item, ...d.knowledgeItems] }
-        })
-      },
+      addKnowledge: (k, id) => mutateRecord(`knowledge:${id}`, JSON.stringify(['create', k]), async signal => {
+        const saved = await insertRecord('knowledge', { id, user_id: userId, title: k.title, content: k.content, tags: k.tags || null }, signal)
+        const confirmed = toKnowledge(saved)
+        setData(d => ({ ...d, knowledgeItems: [confirmed, ...d.knowledgeItems.filter(x => x.id !== id)] }))
+      }),
 
-      deleteKnowledge: (id) => {
-        setData((d) => ({ ...d, knowledgeItems: d.knowledgeItems.filter((x) => x.id !== id) }))
-        supabase.from('knowledge').delete().eq('id', id).then(({ error }) => error && console.error('deleteKnowledge', error))
-      },
+      updateKnowledge: (id, k) => mutateRecord(`knowledge:${id}`, JSON.stringify(['update', k]), async signal => {
+        const result = await supabase.from('knowledge').update({ title: k.title, content: k.content, tags: k.tags || null })
+          .eq('id', id).eq('user_id', userId).select('*').abortSignal(signal).single()
+        if (result.error || !result.data) throw new Error('Knowledge update failed')
+        const confirmed = toKnowledge(result.data)
+        setData(d => ({ ...d, knowledgeItems: d.knowledgeItems.map(x => x.id === id ? confirmed : x) }))
+      }),
+
+      deleteKnowledge: (id) => mutateRecord(`knowledge:${id}`, 'delete', async signal => {
+        const { error } = await supabase.from('knowledge').delete().eq('id', id).eq('user_id', userId).abortSignal(signal)
+        if (error) throw new Error('Knowledge deletion failed')
+        setData(d => ({ ...d, knowledgeItems: d.knowledgeItems.filter(x => x.id !== id) }))
+      }),
 
       latestWeight: sortedWeights[sortedWeights.length - 1],
       prevWeight: sortedWeights[sortedWeights.length - 2],
     }
-  }, [data, loading, hydrationError, reload, refreshRecords, userId])
+  }, [data, loading, hydrationError, reload, refreshRecords, mutateRecord, userId])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
