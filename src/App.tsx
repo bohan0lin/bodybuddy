@@ -111,7 +111,7 @@ function AuthedApp() {
   )
 }
 
-export default function App() {
+function AppContent() {
   const { session, loading } = useAuth()
 
   if (!isConfigured) return <ConfigNeeded />
@@ -122,5 +122,24 @@ export default function App() {
     <StoreProvider userId={session.user.id}>
       <AuthedApp />
     </StoreProvider>
+  )
+}
+
+// Marks staging builds on every screen, including sign-in, so testers can see which database they are using.
+function EnvironmentBadge() {
+  return (
+    <div role="status" aria-label="Staging environment" style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top) + 4px)', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, pointerEvents: 'none',
+      padding: '2px 10px', borderRadius: 999, background: '#b8860b', color: '#0a0a0b', fontSize: 10, fontWeight: 700, letterSpacing: '0.18em' }}>
+      STAGING
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <>
+      {import.meta.env.VITE_APP_ENV === 'staging' && <EnvironmentBadge />}
+      <AppContent />
+    </>
   )
 }

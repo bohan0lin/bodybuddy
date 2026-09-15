@@ -54,6 +54,11 @@ the tree at `08f1ba8` only.
 
 ## 2. Create a real hosted staging environment
 
+Repository preparation is done and locally verified (2026-09-15): the Preview
+build guard, staging migration target, confirmed seed scripts, synthetic
+acceptance accounts and STAGING badge. Follow [Staging](./STAGING.md) for the
+account-side steps below; none of them has been performed yet.
+
 - Create a separate Supabase staging project. Do not use production user data for E2E or manual testing.
 - Apply all current migrations to staging, including the agent action and retrieval migrations.
 - Seed the staging food catalog with reviewed synthetic/reference data and embeddings.

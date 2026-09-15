@@ -9,7 +9,9 @@
 
 - 5.1 最小执行记录：五个 AI 端点每次请求输出一行不含内容的 `ai_request` 日志，按 requestId 关联，记录各阶段（校验、鉴权、限额、上下文、模型、检索、输出）的结果与耗时、终态（completed/failed/cancelled/timeout）与失败阶段、模型 ID、系统提示词 hash、检索版本、token，以及助手提案的 actionId（可对应 `agent_actions`）。未记录成本（无核实价格）、客户端确认/刷新状态，也不支持回放。详见 [Request tracing](./REQUEST_TRACING.md)。
 
-当前本地验证：28 个测试文件 200 个测试、typecheck、lint 通过；无密钥 live 评估运行被预检拦截（退出码 2，无外部调用）。下文 Git 清洁状态是实施开始前的核对快照，不代表当前工作区。
+- 4.2 staging 的仓库侧准备：Vercel Preview/Production 构建前检查（Preview 必须标记 staging 且不得使用生产 Supabase 项目）、迁移 workflow 的 staging 目标（可从任意分支运行，拒绝指向生产 ref）、`seed-foods.mjs` 清空前须确认项目 ref、只读 `STAGING_*` 变量并需 `--confirm` 的合成账号种子脚本（空/部分/完整三个账号）、页面 STAGING 标识和操作手册 [Staging](./STAGING.md)。本地验证：构建检查三种情形模拟符合预期；种子脚本在一次性本地 Supabase 上完成拒绝、首次写入、重复替换、拒绝覆盖非脚本账号四种情形；staging 模式本地页面显示标识且无外部请求。尚未创建 Supabase/Vercel/GitHub 资源，也未进行 iPhone 复现。
+
+当前本地验证：30 个测试文件 207 个测试、typecheck、lint、生产构建通过；无密钥 live 评估运行被预检拦截（退出码 2，无外部调用）。下文 Git 清洁状态是实施开始前的核对快照，不代表当前工作区。
 
 本文结合桌面文件 `BodyBuddy_技术改进计划.md` 的建议和实际代码修订。原文件作为设计参考，其建议不代表已经实现，也不构成本次实施新功能或部署的指令。本次只更新文档。
 

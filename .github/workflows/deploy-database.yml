@@ -12,6 +12,12 @@ on:
       - '.github/workflows/deploy-database.yml'
   workflow_dispatch:
     inputs:
+      target:
+        description: Database to migrate (staging may run from any branch; production only from main)
+        type: choice
+        options: [staging, production]
+        default: staging
+        required: true
       mode:
         description: Preview pending migrations or apply them
         type: choice
@@ -23,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: production-database
+  group: ${{ inputs.target || 'production' }}-database
   cancel-in-progress: false
 
 jobs:
@@ -33,14 +39,19 @@ jobs:
     uses: ./.github/workflows/database.yml
   release:
     needs: [core, database]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.DATABASE_DEPLOY_ENABLED == 'true')
+    if: >-
+      (github.event_name == 'workflow_dispatch' && (inputs.target == 'staging' || github.ref == 'refs/heads/main')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DATABASE_DEPLOY_ENABLED == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: Production
+    # Each GitHub environment holds its own SUPABASE_* secrets under the same names.
+    environment: ${{ inputs.target == 'staging' && 'Staging' || 'Production' }}
     env:
+      TARGET: ${{ inputs.target || 'production' }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      PRODUCTION_SUPABASE_PROJECT_REF: ${{ vars.PRODUCTION_SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,7 +65,16 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo 'Missing SUPABASE_ACCESS_TOKEN secret'; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo 'Missing SUPABASE_DB_PASSWORD secret'; exit 1; }
           test -n "$SUPABASE_PROJECT_ID" || { echo 'Missing SUPABASE_PROJECT_ID secret'; exit 1; }
-      - name: Link production project
+      - name: Check target project
+        shell: bash
+        run: |
+          if [ "$TARGET" = staging ]; then
+            test -n "$PRODUCTION_SUPABASE_PROJECT_REF" || { echo 'Set the PRODUCTION_SUPABASE_PROJECT_REF repository variable before migrating staging'; exit 1; }
+            test "$SUPABASE_PROJECT_ID" != "$PRODUCTION_SUPABASE_PROJECT_REF" || { echo 'The Staging environment points at the production project'; exit 1; }
+          elif [ -n "$PRODUCTION_SUPABASE_PROJECT_REF" ]; then
+            test "$SUPABASE_PROJECT_ID" = "$PRODUCTION_SUPABASE_PROJECT_REF" || { echo 'The Production environment does not match PRODUCTION_SUPABASE_PROJECT_REF'; exit 1; }
+          fi
+      - name: Link ${{ inputs.target || 'production' }} project
         run: npx --no-install supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Compare migration history
         run: npx --no-install supabase migration list --linked

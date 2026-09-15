@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs'
 import { embedMany } from 'ai'
 import { google } from '@ai-sdk/google'
 import { createClient } from '@supabase/supabase-js'
+import { projectRef } from './environments.mjs'
 
 const url = process.env.VITE_SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -19,6 +20,14 @@ if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
   console.error('缺少 GOOGLE_GENERATIVE_AI_API_KEY')
   process.exit(1)
 }
+
+// The script empties the catalog, so the target project must be named explicitly.
+const ref = projectRef(url)
+if (!ref || process.env.SEED_SUPABASE_PROJECT_REF !== ref) {
+  console.error(`清空并重建 foods 前，请设置 SEED_SUPABASE_PROJECT_REF=${ref ?? '<项目 ref>'} 以确认目标项目`)
+  process.exit(1)
+}
+console.log(`目标项目：${ref}`)
 
 const sb = createClient(url, serviceKey, { auth: { persistSession: false } })
 
