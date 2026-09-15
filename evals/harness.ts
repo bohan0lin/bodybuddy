@@ -70,8 +70,17 @@ export function catalogFingerprint(rows: Record<string, unknown>[]): { rows: num
   return { rows: rows.length, fingerprint: createHash('sha256').update(canonical.join('\n')).digest('hex') }
 }
 
+export const datasetFingerprint = (cases: object[]) => catalogFingerprint(cases as Record<string, unknown>[]).fingerprint
+
+// A frozen case set must match its lock exactly, so results never come from cases edited after tuning.
+export function assertFrozen(cases: object[], lock: { version: string; sha256: string; cases: number }, version: string): void {
+  if (lock.version !== version || lock.cases !== cases.length || lock.sha256 !== datasetFingerprint(cases)) {
+    throw new Error('The retrieval holdout differs from evals/holdout.lock.json; restore the frozen cases instead of editing them')
+  }
+}
+
 export interface ReportLike {
-  manifest: { dataset: string; versions: Record<string, string>; catalog?: { fingerprint: string | null }; toolRetrieval?: CatalogSource }
+  manifest: { dataset: string; versions: Record<string, string>; catalog?: { fingerprint: string | null }; toolRetrieval?: CatalogSource; retrievalSet?: { name: string; fingerprint: string } }
   rows: Row[]
 }
 const usesCatalog = (report: ReportLike) => report.rows.some(row => row.suite === 'retrieval') || report.manifest.toolRetrieval === 'evaluation-database'
@@ -80,6 +89,10 @@ const usesCatalog = (report: ReportLike) => report.rows.some(row => row.suite ==
 export function assertComparable(before: ReportLike, after: ReportLike): void {
   if (before.manifest.dataset !== after.manifest.dataset || before.manifest.versions['evals/dataset.ts'] !== after.manifest.versions['evals/dataset.ts']) throw new Error('Dataset must match for a paired comparison')
   if (before.manifest.toolRetrieval !== after.manifest.toolRetrieval) throw new Error('Tool lookups must use the same retrieval source')
+  const hasRetrieval = (report: ReportLike) => report.rows.some(row => row.suite === 'retrieval')
+  if ((hasRetrieval(before) || hasRetrieval(after)) && before.manifest.retrievalSet?.fingerprint !== after.manifest.retrievalSet?.fingerprint) {
+    throw new Error('Retrieval reports must use the same retrieval case set')
+  }
   if (usesCatalog(before) || usesCatalog(after)) {
     const fingerprint = before.manifest.catalog?.fingerprint
     if (!fingerprint || fingerprint !== after.manifest.catalog?.fingerprint) throw new Error('Both reports must record the same evaluated catalog fingerprint')

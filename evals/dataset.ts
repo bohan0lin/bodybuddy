@@ -1,7 +1,8 @@
 import type { ExpectedAction } from './scoring'
 export const DATASET_VERSION = 'nutrition-agent-v2'
 // Authored validation cases, not evidence of a completed held-out experiment.
-export const retrievalCases: { id: string; query: string; expected: string | null; unit?: string; brand?: string }[] = [
+export type RetrievalCase = { id: string; query: string; expected: string | null; unit?: string; brand?: string; preparation?: string; category?: string }
+export const retrievalCases: RetrievalCase[] = [
   { id: 'r01', query: '鸡胸肉', expected: '鸡胸肉' },
   { id: 'r02', query: 'Chicken breast', expected: '鸡胸肉' },
   { id: 'r03', query: '去皮鸡胸', expected: '鸡胸肉' },

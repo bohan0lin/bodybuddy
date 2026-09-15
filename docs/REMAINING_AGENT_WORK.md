@@ -87,6 +87,12 @@ Do not call Chromium mobile tests real iPhone acceptance.
 
 ## 4. Complete the retrieval quality experiment
 
+Holdout frozen 2026-09-15: `evals/holdout.ts` (`retrieval-holdout-v1`, 20 queries,
+locked by hash in `evals/holdout.lock.json`) and `--retrieval-set holdout` in the
+runner. No holdout run has been performed. The catalog still needs provenance
+review, and the vector strategy is a same-filter ablation rather than the old
+pipeline, so "old vs new" claims remain unsupported.
+
 - Freeze a separate 20-query holdout set before tuning the retrieval code.
 - Include exact aliases, English/Chinese queries, metadata filters, unit mismatches, ambiguous foods, and no-match queries.
 - Run the old vector-only baseline and the new exact-plus-semantic pipeline against the same catalog and same holdout.

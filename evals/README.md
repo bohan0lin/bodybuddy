@@ -74,11 +74,30 @@ matches from abstentions; report both alongside recall/overall case pass rate.
 Retrieval uses a fixed embedding model, independently of the three assistant model
 configurations. Do not describe that as three embedding-model comparisons.
 
-The 20 retrieval examples in `dataset.ts` are authored validation cases. They are
-not proof of the requested held-out 15%-to-5% improvement. Freeze and hash a separate
-holdout before tuning, run baseline and candidate on the same catalog, retain both
-reports, and do not silently exclude failed/unavailable cases. The comparison tool
-rejects incomplete or mismatched datasets.
+The 20 retrieval examples in `dataset.ts` are development cases used while
+building retrieval. They are not proof of the requested held-out 15%-to-5%
+improvement.
+
+### Retrieval holdout
+
+`evals/holdout.ts` holds a separate 20-query acceptance set frozen on 2026-09-15
+(`retrieval-holdout-v1`), covering exact aliases, cross-language names, semantic
+paraphrases, compatible and incompatible units, brand/preparation filters,
+ambiguous queries that should abstain, and non-foods. Its content hash is recorded
+in `evals/holdout.lock.json`, and `evals/holdout.test.ts` fails if a case changes
+without a deliberate new version.
+
+```sh
+npm run eval -- --live --suite retrieval --retrieval-set holdout --max-cases 40 --max-usd 1
+```
+
+The runner refuses a holdout that differs from its lock, and records the set
+name, version and fingerprint. `eval:compare` rejects retrieval reports built from
+different case sets or catalogs. Rules: never tune retrieval code against holdout
+failures; run the baseline and candidate on the same catalog; retain both reports;
+keep failed and unavailable cases. Expected answers for the semantic and
+ambiguous categories are product judgements, and the catalog entries themselves
+are still `legacy-unverified`.
 
 ## Paired user timing study
 

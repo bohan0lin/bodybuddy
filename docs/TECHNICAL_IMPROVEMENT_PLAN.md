@@ -11,7 +11,9 @@
 
 - 4.2 staging 的仓库侧准备：Vercel Preview/Production 构建前检查（Preview 必须标记 staging 且不得使用生产 Supabase 项目）、迁移 workflow 的 staging 目标（可从任意分支运行，拒绝指向生产 ref）、`seed-foods.mjs` 清空前须确认项目 ref、只读 `STAGING_*` 变量并需 `--confirm` 的合成账号种子脚本（空/部分/完整三个账号）、页面 STAGING 标识和操作手册 [Staging](./STAGING.md)。本地验证：构建检查三种情形模拟符合预期；种子脚本在一次性本地 Supabase 上完成拒绝、首次写入、重复替换、拒绝覆盖非脚本账号四种情形；staging 模式本地页面显示标识且无外部请求。尚未创建 Supabase/Vercel/GitHub 资源，也未进行 iPhone 复现。
 
-当前本地验证：30 个测试文件 207 个测试、typecheck、lint、生产构建通过；无密钥 live 评估运行被预检拦截（退出码 2，无外部调用）。下文 Git 清洁状态是实施开始前的核对快照，不代表当前工作区。
+- 5.2 冻结检索验收集：`evals/holdout.ts`（`retrieval-holdout-v1`，20 条，与开发集不重叠，覆盖精确别名、中英文、语义改写、单位兼容/不兼容、品牌/做法过滤、应拒绝的歧义查询和非食物），内容 hash 锁定在 `evals/holdout.lock.json`，测试在内容被改动时失败；评估脚本 `--retrieval-set holdout` 拒绝与锁不一致的用例，并在 manifest 记录用例集指纹；比较工具拒绝不同用例集。尚未实际运行，catalog 来源仍待核验。
+
+当前本地验证：31 个测试文件 211 个测试、typecheck、lint 通过（生产构建上一批已通过）；无密钥 live 评估运行被预检拦截（退出码 2，无外部调用）。下文 Git 清洁状态是实施开始前的核对快照，不代表当前工作区。
 
 本文结合桌面文件 `BodyBuddy_技术改进计划.md` 的建议和实际代码修订。原文件作为设计参考，其建议不代表已经实现，也不构成本次实施新功能或部署的指令。本次只更新文档。
 

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { assertComparable, catalogFingerprint, configIssues, hasAllowance, isolateEvaluationEnv, planGroups, retrievalIssues, type ReportLike } from './harness'
+import { assertComparable, assertFrozen, catalogFingerprint, configIssues, datasetFingerprint, hasAllowance, isolateEvaluationEnv, planGroups, retrievalIssues, type ReportLike } from './harness'
 
 const app = { SUPABASE_URL: 'https://app.supabase.co', SUPABASE_ANON_KEY: 'app', VITE_SUPABASE_URL: 'https://app.supabase.co', VITE_SUPABASE_ANON_KEY: 'app', SUPABASE_SERVICE_ROLE_KEY: 'service' }
 
@@ -55,4 +55,15 @@ it('refuses comparisons across different or unrecorded catalogs', () => {
   expect(() => assertComparable(report('x'), report('y'))).toThrow('catalog fingerprint')
   expect(() => assertComparable(report(null), report(null))).toThrow('catalog fingerprint')
   expect(() => assertComparable(report('x'), { ...report('x'), manifest: { ...report('x').manifest, toolRetrieval: 'none' } })).toThrow('retrieval source')
+  const withSet = (fingerprint: string): ReportLike => ({ ...report('x'), manifest: { ...report('x').manifest, retrievalSet: { name: 'holdout', fingerprint } } })
+  expect(() => assertComparable(withSet('a'), withSet('a'))).not.toThrow()
+  expect(() => assertComparable(withSet('a'), withSet('b'))).toThrow('same retrieval case set')
+})
+
+it('refuses a holdout whose cases no longer match the lock', () => {
+  const cases = [{ id: 'h01', query: 'a', expected: null }]
+  const lock = { version: 'v1', sha256: datasetFingerprint(cases), cases: 1 }
+  expect(() => assertFrozen(cases, lock, 'v1')).not.toThrow()
+  expect(() => assertFrozen([{ ...cases[0], expected: 'b' }], lock, 'v1')).toThrow('holdout.lock.json')
+  expect(() => assertFrozen(cases, lock, 'v2')).toThrow('holdout.lock.json')
 })

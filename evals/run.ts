@@ -12,13 +12,14 @@ import { RETRIEVAL_VERSION } from '../api/_lib/retrieval'
 import type { Database } from '../src/lib/database.types'
 import { assistantContext } from './cases'
 import { DATASET_VERSION, retrievalCases, toolCases } from './dataset'
-import { catalogFingerprint, configIssues, embeddingBudget, hasAllowance, isolateEvaluationEnv, planGroups, retrievalIssues, type GroupUsage, type RunGroup } from './harness'
+import { HOLDOUT_VERSION, retrievalHoldout } from './holdout'
+import { assertFrozen, catalogFingerprint, configIssues, datasetFingerprint, embeddingBudget, hasAllowance, isolateEvaluationEnv, planGroups, retrievalIssues, type GroupUsage, type RunGroup } from './harness'
 import { SCORER_VERSION, estimateCost, scoreActions, scoreRetrieval, summarize, type Row } from './scoring'
 
 // Live runs are opt-in. This runner never loads production .env.local credentials.
 const args = process.argv.slice(2)
 const flags = new Set(['--live','--dry-run','--allow-partial'])
-const values = new Set(['--config','--suite','--max-cases','--max-usd'])
+const values = new Set(['--config','--suite','--max-cases','--max-usd','--retrieval-set'])
 const options: Record<string,string> = {}
 for (let i = 0; i < args.length; i++) {
   if (flags.has(args[i])) options[args[i]] = 'true'
@@ -29,6 +30,11 @@ const suite = z.enum(['all','tools','retrieval']).parse(options['--suite'] ?? 'a
 const maxCases = z.coerce.number().int().min(1).max(100).parse(options['--max-cases'] ?? 76)
 const maxUsd = z.coerce.number().positive().max(20).parse(options['--max-usd'] ?? 0.5)
 const allowPartial = Boolean(options['--allow-partial'])
+const retrievalSetName = z.enum(['dev','holdout']).parse(options['--retrieval-set'] ?? 'dev')
+// The holdout must match its lock so results can never come from cases edited after tuning.
+if (retrievalSetName === 'holdout') assertFrozen(retrievalHoldout, JSON.parse(await readFile('evals/holdout.lock.json','utf8')), HOLDOUT_VERSION)
+const selectedRetrievalCases = retrievalSetName === 'holdout' ? retrievalHoldout : retrievalCases
+const retrievalSet = { name: retrievalSetName, version: retrievalSetName === 'holdout' ? HOLDOUT_VERSION : DATASET_VERSION, cases: selectedRetrievalCases.length, fingerprint: datasetFingerprint(selectedRetrievalCases) }
 const modelSchema = z.object({ id: z.string().regex(/^[a-z0-9-]+$/), provider: z.enum(['google','openai','anthropic']), model: z.string().min(1),
   pricing: z.object({ inputPerMillion: z.number().nonnegative(), outputPerMillion: z.number().nonnegative(), verifiedOn: z.iso.date() }).nullable() }).strict()
 const configs = z.array(modelSchema).min(1).max(3).parse(JSON.parse(await readFile(options['--config'] ?? 'evals/models.example.json', 'utf8')))
@@ -38,7 +44,7 @@ if (new Set(configs.map(c => c.id)).size !== configs.length) throw new Error('Mo
 const database = isolateEvaluationEnv(process.env)
 const mode = options['--live'] && !options['--dry-run'] ? 'live' : 'dry-run'
 const embeddingUsd = embeddingBudget(process.env)
-const plan = planGroups(suite, configs.map(c => c.id), { retrieval: retrievalCases.length, tools: toolCases.length }, maxCases, maxUsd)
+const plan = planGroups(suite, configs.map(c => c.id), { retrieval: selectedRetrievalCases.length, tools: toolCases.length }, maxCases, maxUsd)
 const preflight: string[] = []
 if (!plan.complete) preflight.push(`--max-cases ${maxCases} is below the complete matrix of ${plan.requiredCases} cases`)
 if (suite !== 'tools') preflight.push(...retrievalIssues(database.catalog, process.env).map(issue => `retrieval: ${issue}`))
@@ -67,11 +73,11 @@ const run = mode === 'live' && (!preflight.length || allowPartial)
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 // scripts/foods.json is the local seed file only; catalog.fingerprint identifies what was actually queried.
-const versions = Object.fromEntries(await Promise.all(['api/_lib/assistant.ts','api/_lib/contracts.ts','api/_lib/retrieval.ts','scripts/foods.json','evals/dataset.ts','evals/scoring.ts','evals/harness.ts'].map(async file => [file, hash(await readFile(file,'utf8'))])))
+const versions = Object.fromEntries(await Promise.all(['api/_lib/assistant.ts','api/_lib/contracts.ts','api/_lib/retrieval.ts','scripts/foods.json','evals/dataset.ts','evals/scoring.ts','evals/harness.ts','evals/holdout.ts','evals/holdout.lock.json'].map(async file => [file, hash(await readFile(file,'utf8'))])))
 const manifest = { dataset: DATASET_VERSION, scorer: SCORER_VERSION, retrieval: RETRIEVAL_VERSION,
   retrievalComparison: 'Ablation of vector-only and hybrid selection under identical metadata and unit filters; not a fixed legacy baseline',
   versions, commit: execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), dirty: Boolean(execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim()),
-  configs, suite, maxCases, maxUsd, allowPartial, startedAt: new Date().toISOString(), mode, catalog, toolRetrieval: catalog.source, preflight, plan: plan.groups }
+  configs, suite, maxCases, maxUsd, allowPartial, startedAt: new Date().toISOString(), mode, catalog, toolRetrieval: catalog.source, retrievalSet, preflight, plan: plan.groups }
 
 const rows: Row[] = []
 const usage = new Map<RunGroup, GroupUsage>(plan.groups.map(group => [group, { calls: 0, spent: 0, unknownSpend: false }]))
@@ -87,7 +93,7 @@ if (mode === 'live') for (const group of plan.groups) {
   const used = usage.get(group)!
   if (group.suite === 'retrieval') {
     const issues = retrievalIssues(catalog.source, process.env)
-    for (const c of retrievalCases) {
+    for (const c of selectedRetrievalCases) {
       const start = performance.now()
       const row: Row = { id: c.id, suite: 'retrieval', config: group.config, status: 'inconclusive', reason: 'configuration', detail: issues.join('; ') || blocked, latencyMs: 0 }
       if (run && !issues.length && !catalog.fingerprint) Object.assign(row, { reason: 'infrastructure', detail: 'Evaluation catalog unavailable' })
@@ -97,7 +103,7 @@ if (mode === 'live') for (const group of plan.groups) {
           // The reserved ceiling is a budget guard, not a measured embedding cost.
           used.calls++; used.spent += embeddingUsd!; row.reservedUsd = embeddingUsd!
           try {
-            const [actual] = await lookupFoods([{ name: c.query, unit: c.unit, brand: c.brand }], AbortSignal.timeout(60000), { strict: true, strategy: group.config as 'vector' | 'hybrid' })
+            const [actual] = await lookupFoods([{ name: c.query, unit: c.unit, brand: c.brand, preparation: c.preparation }], AbortSignal.timeout(60000), { strict: true, strategy: group.config as 'vector' | 'hybrid' })
             const score = scoreRetrieval(actual, c.expected)
             scored(row, score.pass, actual?.name ?? 'No accepted match', { incorrectMatch: score.incorrectMatch, abstained: score.abstained })
           } catch { Object.assign(row, { reason: 'infrastructure', detail: 'Retrieval infrastructure or provider unavailable' }) }
@@ -161,7 +167,7 @@ await writeFile(dir+'/report.md',`# Evaluation ${mode}
 
 Dataset: ${DATASET_VERSION}. Scorer: ${SCORER_VERSION}. Commit: ${manifest.commit}${manifest.dirty ? ' (dirty)' : ''}.
 
-Catalog: ${catalogLine}. Retrieval comparison: ${manifest.retrievalComparison}.
+Catalog: ${catalogLine}. Retrieval set: ${retrievalSet.name} (${retrievalSet.version}, ${retrievalSet.cases} cases, sha256 ${retrievalSet.fingerprint}). Retrieval comparison: ${manifest.retrievalComparison}.
 
 Status: ${report.summary.status}.${mode === 'dry-run' ? ' Dry runs produce no measured results.' : ''}
 ${preflight.length ? `\nPreflight issues${run ? ' (run continued with --allow-partial)' : ''}:\n\n${preflight.map(issue => `- ${issue}`).join('\n')}\n` : ''}

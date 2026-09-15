@@ -1,0 +1,7 @@
+{
+  "version": "retrieval-holdout-v1",
+  "cases": 20,
+  "sha256": "befb6d1861d81bc998d550483d211d2024afa20e4301b7739676fd8021f43cc3",
+  "frozenOn": "2026-09-15",
+  "rule": "Do not tune retrieval against these cases. Changing them requires a new version and a new lock; never compare results across versions."
+}
