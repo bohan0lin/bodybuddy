@@ -7,7 +7,9 @@
 - 9.1 普通写入：meal/workout/favorite/knowledge 的可靠写入已完成代码、单元/组件测试和本地浏览器验证（2026-09-15，24 个场景 × 桌面/移动共 48 次运行全部通过，使用一次性本地 Supabase）。尚未进行 staging 与 iPhone 验收。详见 [Mutation reliability](./MUTATION_RELIABILITY.md)。
 - 9.2 评估隔离：所有模式（含 `--suite tools`）先移除应用数据库变量，只允许 `EVAL_SUPABASE_*`；助手 `lookupNutrition` 通过注入的严格检索或确定性“无匹配”执行；live 运行记录实际查询 catalog 的内容指纹，比较工具要求指纹一致；预检覆盖模型 key/价格/占位 ID、检索配置和完整矩阵用例数；预算按组分配；报告分开统计错误匹配、拒绝匹配与配置/预算/基础设施导致的不确定结果；vector/hybrid 明确标注为相同过滤条件下的消融比较。详见 `evals/README.md`。尚未用真实密钥或评估数据库运行。
 
-当前本地验证：27 个测试文件 189 个测试、typecheck、lint 通过；无密钥 live 运行被预检拦截（退出码 2，无外部调用）。下文 Git 清洁状态是实施开始前的核对快照，不代表当前工作区。
+- 5.1 最小执行记录：五个 AI 端点每次请求输出一行不含内容的 `ai_request` 日志，按 requestId 关联，记录各阶段（校验、鉴权、限额、上下文、模型、检索、输出）的结果与耗时、终态（completed/failed/cancelled/timeout）与失败阶段、模型 ID、系统提示词 hash、检索版本、token，以及助手提案的 actionId（可对应 `agent_actions`）。未记录成本（无核实价格）、客户端确认/刷新状态，也不支持回放。详见 [Request tracing](./REQUEST_TRACING.md)。
+
+当前本地验证：28 个测试文件 200 个测试、typecheck、lint 通过；无密钥 live 评估运行被预检拦截（退出码 2，无外部调用）。下文 Git 清洁状态是实施开始前的核对快照，不代表当前工作区。
 
 本文结合桌面文件 `BodyBuddy_技术改进计划.md` 的建议和实际代码修订。原文件作为设计参考，其建议不代表已经实现，也不构成本次实施新功能或部署的指令。本次只更新文档。
 

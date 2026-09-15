@@ -49,6 +49,8 @@ sanity bounds, **not dietary recommendations or a complete health-safety layer**
 Errors have `{ error: { code, message, requestId } }`, an `X-Request-Id` header,
 and `Cache-Control: no-store`. Responses never expose exception stacks or SDK
 messages. These handlers do not log raw prompts, images, auth headers or SDK errors.
+Each request emits one content-free `ai_request` trace line keyed by `requestId`;
+its fields and privacy limits are documented in [Request tracing](./REQUEST_TRACING.md).
 
 Saved knowledge and account text are placed in an explicitly untrusted user-context
 message, outside system instructions. System rules retain proposal-only tools and

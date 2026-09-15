@@ -33,3 +33,13 @@ it('routes nutrition lookups through an injected lookup instead of the configure
   expect(lookup).toHaveBeenCalledWith({ name: 'rice', unit: 'g' })
   expect(lookupFoods).not.toHaveBeenCalled()
 })
+
+it('reports the model and a prompt version that excludes account data', async () => {
+  generateText.mockResolvedValue({ text: 'ok' })
+  const onModel = vi.fn()
+  const context = { targets: zero, consumed: zero, todayMeals: [{ name: 'private meal', type: 'lunch' }], savedItems: [], hour: 12 }
+  await assistantChat({ messages: [{ role: 'user', text: 'hi' }], context, lang: 'en', onModel })
+  await assistantChat({ messages: [{ role: 'user', text: 'different' }], context: { ...context, todayMeals: [] }, lang: 'en', onModel })
+  expect(onModel.mock.calls[0][0]).toEqual({ model: 'mock-model', promptVersion: expect.stringMatching(/^[0-9a-f]{12}$/) })
+  expect(onModel.mock.calls[1][0]).toEqual(onModel.mock.calls[0][0])
+})

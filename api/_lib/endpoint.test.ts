@@ -38,6 +38,8 @@ async function call(endpoint: Endpoint, authorization: string | string[] | undef
   await createEndpoint(endpoint)({ method, headers: { authorization, 'content-type': 'application/json' }, body }, res)
   return result
 }
+const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+const traces = () => info.mock.calls.map(([line]) => JSON.parse(String(line))).filter((event) => event.event === 'ai_request')
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(reserveRequest).mockResolvedValue(undefined)
@@ -155,6 +157,42 @@ describe('all paid endpoint contracts', () => {
       expect((await pending).statusCode).toBe(504)
       expect(mocks.knowledge.mock.calls[0][2].aborted).toBe(true)
       expect(vi.getTimerCount()).toBe(0)
+      expect(traces()).toEqual([expect.objectContaining({ outcome: 'timeout', status: 504, code: 'REQUEST_TIMEOUT', failedStage: 'model' })])
     } finally { vi.useRealTimers() }
+  })
+})
+
+describe('request traces', () => {
+  it('links a completed assistant request to model, retrieval and proposal IDs without content', async () => {
+    const actionId = '10000000-0000-4000-8000-000000000001'
+    mocks.assistant.mockImplementation(async (input) => {
+      input.onModel({ model: 'google:test-model', promptVersion: 'abcdef123456' })
+      await input.lookup({ name: 'private rice' })
+      input.onUsage({ inputTokens: 120, outputTokens: 30 })
+      return { reply: 'private reply', actions: [{ actionId, date: clock.date, action: { type: 'workout', workoutType: 'walk', durationMin: 30, calories: 100 } }] }
+    })
+    const result = await call('assistant', `Bearer ${token}`, { messages: [{ role: 'user', text: 'private message' }], ...clock })
+    expect(result.statusCode).toBe(200)
+    const [trace] = traces()
+    expect(trace).toMatchObject({ requestId: result.headers['X-Request-Id'], endpoint: 'assistant', outcome: 'completed', status: 200, model: 'google:test-model',
+      promptVersion: 'abcdef123456', retrievalVersion: expect.any(String), inputTokens: 120, outputTokens: 30, proposals: 1, actionIds: [actionId] })
+    expect(trace.steps.map((step: { stage: string }) => step.stage)).toEqual(['validation', 'auth', 'validation', 'limit', 'context', 'retrieval', 'model', 'output'])
+    expect(JSON.stringify(trace)).not.toMatch(/private|user-a|Bearer|test\.payload/)
+  })
+  it('names the failing stage and error class without provider details', async () => {
+    mocks.knowledge.mockRejectedValue(new Error('secret-key and private prompt'))
+    await call('knowledge')
+    expect(traces()).toEqual([expect.objectContaining({ outcome: 'failed', status: 500, code: 'INTERNAL_ERROR', failedStage: 'model' })])
+    expect(JSON.stringify(traces())).not.toMatch(/secret|private/)
+  })
+  it.each([
+    ['validation', () => call('knowledge', `Bearer ${token}`, { text: '' }), 400],
+    ['auth', () => call('knowledge', 'Basic x'), 401],
+    ['limit', () => { vi.mocked(reserveRequest).mockRejectedValue(new ApiError(429, 'RATE_LIMITED', 'Later')); return call('knowledge') }, 429],
+    ['output', () => { mocks.knowledge.mockResolvedValue({ relevant: true }); return call('knowledge') }, 502],
+  ] as const)('attributes %s failures to their stage', async (stage, request, status) => {
+    await request()
+    expect(traces()).toEqual([expect.objectContaining({ outcome: 'failed', status, failedStage: stage })])
+    if (stage === 'validation' || stage === 'auth') expect(traces()[0].steps.some((step: { stage: string }) => step.stage === 'model')).toBe(false)
   })
 })

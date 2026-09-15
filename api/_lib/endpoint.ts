@@ -6,10 +6,14 @@ import { ApiError, sendError, type ApiRequest, type ApiResponse } from './http.j
 import { validateImage } from './image.js'
 import { reserveRequest } from './limits.js'
 import { deadline, withinDeadline } from './deadline.js'
+import { RETRIEVAL_VERSION } from './retrieval.js'
+import { createTrace } from './trace.js'
+import type { FoodQuery } from './rag.js'
 
 export function createEndpoint(endpoint: Endpoint) {
   return async (req: ApiRequest, res: ApiResponse) => {
     const requestId = randomUUID()
+    const trace = createTrace(requestId, endpoint)
     res.setHeader('Cache-Control', 'no-store')
     res.setHeader('X-Request-Id', requestId)
     const lifetime = deadline(endpoint === 'lookup' ? 15_000 : 45_000, req.signal)
@@ -18,67 +22,87 @@ export function createEndpoint(endpoint: Endpoint) {
     res.once?.('close', disconnected)
     try {
       await withinDeadline(lifetime.signal, async () => {
-      if (req.method !== 'POST') {
-        res.setHeader('Allow', 'POST')
-        throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.')
-      }
-      const identity = await authenticate(req.headers, lifetime.signal)
-      const contentType = req.headers['content-type']
-      if (typeof contentType !== 'string' || contentType.split(';')[0].trim().toLowerCase() !== 'application/json') throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/json.')
-      let body = req.body
-      const encoded = typeof body === 'string' ? body : JSON.stringify(body)
-      if (!encoded || Buffer.byteLength(encoded) > MAX_BODY_BYTES) throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'Request body is too large or empty.')
-      if (typeof body === 'string') {
-        try { body = JSON.parse(body) } catch { throw new ApiError(400, 'INVALID_REQUEST', 'Invalid JSON request.') }
-      }
-      const parsed = requests[endpoint].safeParse(body)
-      if (!parsed.success) throw new ApiError(400, 'INVALID_REQUEST', 'Request fields are invalid.')
-      const imageRequest = endpoint === 'recognize' || (endpoint === 'assistant' && requests.assistant.parse(parsed.data).messages.some((message) => !!message.image))
-      if (endpoint === 'recognize') {
-        const input = requests.recognize.parse(parsed.data)
-        await validateImage(input.image, input.mediaType)
-      } else if (endpoint === 'assistant') {
-        for (const message of requests.assistant.parse(parsed.data).messages) {
-          if (message.image) {
-            const [prefix, image] = message.image.split(',')
-            await validateImage(image, prefix.slice(5, -7))
+      await trace.step('validation', async () => {
+        if (req.method !== 'POST') {
+          res.setHeader('Allow', 'POST')
+          throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Use POST.')
+        }
+      })
+      const identity = await trace.step('auth', () => authenticate(req.headers, lifetime.signal))
+      const { data, imageRequest } = await trace.step('validation', async () => {
+        const contentType = req.headers['content-type']
+        if (typeof contentType !== 'string' || contentType.split(';')[0].trim().toLowerCase() !== 'application/json') throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/json.')
+        let body = req.body
+        const encoded = typeof body === 'string' ? body : JSON.stringify(body)
+        if (!encoded || Buffer.byteLength(encoded) > MAX_BODY_BYTES) throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'Request body is too large or empty.')
+        if (typeof body === 'string') {
+          try { body = JSON.parse(body) } catch { throw new ApiError(400, 'INVALID_REQUEST', 'Invalid JSON request.') }
+        }
+        const parsed = requests[endpoint].safeParse(body)
+        if (!parsed.success) throw new ApiError(400, 'INVALID_REQUEST', 'Request fields are invalid.')
+        const image = endpoint === 'recognize' || (endpoint === 'assistant' && requests.assistant.parse(parsed.data).messages.some((message) => !!message.image))
+        if (endpoint === 'recognize') {
+          const input = requests.recognize.parse(parsed.data)
+          await validateImage(input.image, input.mediaType)
+        } else if (endpoint === 'assistant') {
+          for (const message of requests.assistant.parse(parsed.data).messages) {
+            if (message.image) {
+              const [prefix, encodedImage] = message.image.split(',')
+              await validateImage(encodedImage, prefix.slice(5, -7))
+            }
           }
         }
-      }
+        return { data: parsed.data, imageRequest: image }
+      })
       if (lifetime.signal.aborted) throw lifetime.signal.reason
-      await reserveRequest(req, identity.userId, endpoint, imageRequest, requestId, lifetime.signal)
+      await trace.step('limit', () => reserveRequest(req, identity.userId, endpoint, imageRequest, requestId, lifetime.signal))
       if (lifetime.signal.aborted) throw lifetime.signal.reason
+      const retrieve = (queries: FoodQuery[], signal?: AbortSignal) => trace.step('retrieval', async () => {
+        trace.record({ retrievalVersion: RETRIEVAL_VERSION })
+        const { lookupFoods } = await import('./rag.js')
+        return lookupFoods(queries, signal)
+      })
       let result: unknown
       // Narrow each contract separately; model modules load only after authentication/validation.
       if (endpoint === 'assistant') {
-        const input = requests.assistant.parse(parsed.data)
-        const context = await loadContext(identity, input.date, input.hour)
+        const input = requests.assistant.parse(data)
+        const context = await trace.step('context', () => loadContext(identity, input.date, input.hour))
         const { assistantChat } = await import('./assistant.js')
-        result = await assistantChat({ messages: input.messages, context, lang: input.lang, date: input.date }, lifetime.signal)
+        result = await trace.step('model', () => assistantChat({ messages: input.messages, context, lang: input.lang, date: input.date, ...trace.hooks,
+          lookup: async (query) => (await retrieve([query], lifetime.signal))[0] ?? null }, lifetime.signal))
       } else if (endpoint === 'suggest') {
-        const input = requests.suggest.parse(parsed.data)
-        const context = await loadContext(identity, input.date, input.hour)
+        const input = requests.suggest.parse(data)
+        const context = await trace.step('context', () => loadContext(identity, input.date, input.hour))
         const { suggestMeal } = await import('./ai.js')
-        result = await suggestMeal({ targets: context.targets, consumed: context.consumed, meals: context.todayMeals, savedItems: context.savedItems.map((s) => ({ ...s, kind: s.kind as 'food' | 'meal' })), hour: input.hour, mode: input.mode, lang: input.lang }, lifetime.signal)
+        result = await trace.step('model', () => suggestMeal({ targets: context.targets, consumed: context.consumed, meals: context.todayMeals, savedItems: context.savedItems.map((s) => ({ ...s, kind: s.kind as 'food' | 'meal' })), hour: input.hour, mode: input.mode, lang: input.lang }, lifetime.signal, trace.hooks))
       } else if (endpoint === 'recognize') {
-        const input = requests.recognize.parse(parsed.data)
+        const input = requests.recognize.parse(data)
         const { recognizeFood } = await import('./ai.js')
-        result = await recognizeFood(input.image, input.mediaType, input.lang, lifetime.signal)
+        result = await trace.step('model', () => recognizeFood(input.image, input.mediaType, input.lang, lifetime.signal, { ...trace.hooks, lookup: retrieve }))
       } else if (endpoint === 'lookup') {
-        const input = requests.lookup.parse(parsed.data)
-        const { lookupFoods } = await import('./rag.js')
-        const [match] = await lookupFoods([input], lifetime.signal)
+        const input = requests.lookup.parse(data)
+        const [match] = await retrieve([input], lifetime.signal)
         result = { match }
       } else {
-        const input = requests.knowledge.parse(parsed.data)
+        const input = requests.knowledge.parse(data)
         const { tidyKnowledge } = await import('./knowledge.js')
-        result = await tidyKnowledge(input.text, input.lang, lifetime.signal)
+        result = await trace.step('model', () => tidyKnowledge(input.text, input.lang, lifetime.signal, trace.hooks))
       }
-      const output = responses[endpoint].safeParse(result)
-      if (!output.success) throw new ApiError(502, 'INVALID_MODEL_RESPONSE', 'AI returned an invalid result. Please retry.')
-      if (!lifetime.signal.aborted) res.status(200).json(output.data)
+      const output = await trace.step('output', async () => {
+        const parsed = responses[endpoint].safeParse(result)
+        if (!parsed.success) throw new ApiError(502, 'INVALID_MODEL_RESPONSE', 'AI returned an invalid result. Please retry.')
+        return parsed.data
       })
+      if (endpoint === 'assistant') {
+        // Proposal IDs link this request to any receipt the user later confirms.
+        const { actions } = responses.assistant.parse(output)
+        trace.record({ proposals: actions.length, actionIds: actions.map((action) => action.actionId) })
+      }
+      if (!lifetime.signal.aborted) res.status(200).json(output)
+      })
+      trace.finish()
     } catch (error) {
+      trace.finish(error)
       // Never log auth headers, SDK errors, prompts, photos or health data.
       sendError(res, error, requestId)
     } finally {

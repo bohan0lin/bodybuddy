@@ -3,8 +3,9 @@ import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { recognitionSchema as recogSchema } from './contracts.js'
-import { lookupFoods } from './rag.js'
+import { lookupFoods, type FoodMatch, type FoodQuery } from './rag.js'
 import { nutritionRatio } from './retrieval.js'
+import { describeModel, type ModelHooks } from './trace.js'
 
 // ══════════════════════════════════════════════════════════════
 // 切换 AI 只需改下面这一行 MODEL（对应的 key 放到 .env.local / Vercel 环境变量）：
@@ -42,7 +43,7 @@ export interface SuggestInput {
 }
 
 // ── 饮食建议 ────────────────────────────────────────────────
-export async function suggestMeal(input: SuggestInput, abortSignal?: AbortSignal): Promise<{ text: string }> {
+export async function suggestMeal(input: SuggestInput, abortSignal?: AbortSignal, hooks: ModelHooks = {}): Promise<{ text: string }> {
   const rem: Macros = {
     protein: Math.max(0, Math.round(input.targets.protein - input.consumed.protein)),
     carbs: Math.max(0, Math.round(input.targets.carbs - input.consumed.carbs)),
@@ -91,7 +92,9 @@ ${commonRules}
 今天已吃：${input.meals.map((m) => m.name).join('、') || '还没吃'}
 当前时间：${input.hour} 点${libraryBlock}`
 
-  const { text } = await generateText({ model: MODEL, system, prompt, maxRetries: 0, maxOutputTokens: 2048, abortSignal })
+  hooks.onModel?.(describeModel(MODEL, system))
+  const { text, totalUsage } = await generateText({ model: MODEL, system, prompt, maxRetries: 0, maxOutputTokens: 2048, abortSignal })
+  hooks.onUsage?.(totalUsage)
   return { text: text.trim() }
 }
 
@@ -111,6 +114,7 @@ export async function recognizeFood(
   mediaType: string,
   lang?: 'zh' | 'en',
   abortSignal?: AbortSignal,
+  hooks: ModelHooks & { lookup?: (queries: FoodQuery[], signal?: AbortSignal) => Promise<(FoodMatch | null)[]> } = {},
 ): Promise<{ items: RecognizedItem[] }> {
   const dataUrl = `data:${mediaType || 'image/jpeg'};base64,${imageBase64}`
   const nameRule =
@@ -125,7 +129,8 @@ ${nameRule}
 - 各营养值为「该分量」下的估算值。
 - 若图中没有可识别的食物，items 返回空数组。`
 
-  const { object } = await generateObject({
+  hooks.onModel?.(describeModel(MODEL, system))
+  const { object, usage } = await generateObject({
     model: MODEL,
     schema: recogSchema,
     system,
@@ -143,10 +148,12 @@ ${nameRule}
     ],
   })
 
+  hooks.onUsage?.(usage)
+
   // RAG 校准：命中营养库且为重量单位时，用库里的精准值按分量换算覆盖模型估算
   let items = object.items
   try {
-    const matches = await lookupFoods(items.map((it) => ({ name: it.name, unit: it.unit })), abortSignal)
+    const matches = await (hooks.lookup ?? lookupFoods)(items.map((it) => ({ name: it.name, unit: it.unit })), abortSignal)
     const r1 = (n: number) => Math.round(n * 10) / 10
     items = items.map((it, i) => {
       const m = matches[i]
