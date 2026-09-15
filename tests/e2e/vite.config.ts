@@ -27,6 +27,16 @@ export default defineConfig({
           res.setHeader('content-type','application/json'); res.end(JSON.stringify({reply:'Review this estimate before saving.',actions}))
         } catch { res.statusCode=400; res.end(JSON.stringify({error:'Invalid synthetic request'})) }
       })
+      server.middlewares.use('/api/knowledge', async (req,res) => {
+        try {
+          const token = req.headers.authorization?.replace(/^Bearer /,'')
+          if (!token || (await sb.auth.getUser(token)).error) { res.statusCode=401; res.end(); return }
+          let body=''; for await (const chunk of req) body += chunk
+          if (requests.knowledge.parse(JSON.parse(body)).text !== 'fixture:knowledge') throw new Error('Unknown fixture')
+          res.setHeader('content-type','application/json')
+          res.end(JSON.stringify({relevant:true,title:'E2E protein tip',content:'Spread protein across meals.',tags:'protein'}))
+        } catch { res.statusCode=400; res.end(JSON.stringify({error:'Invalid synthetic request'})) }
+      })
     },
   }],
   server: { host:'127.0.0.1',port:5182,strictPort:true },

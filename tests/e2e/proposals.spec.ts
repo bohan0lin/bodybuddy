@@ -121,7 +121,7 @@ test('18 workout edits remain on screen after failure and can clear notes', asyn
 for (const table of ['meals', 'workouts']) {
   test(`day ${table} deletion handles a lost acknowledgement and retry`, async ({ page }) => {
     const seeded = table === 'meals'
-      ? await client.from('meals').insert({ id, user_id: userId, date: '2026-09-15', name: 'Delete test rice', type: 'lunch', protein: 3, carbs: 28, fat: 1, calories: 130 })
+      ? await client.from('meals').insert({ id, user_id: userId, date: '2026-09-15', name: 'E2E lunch rice', type: 'lunch', protein: 3, carbs: 28, fat: 1, calories: 130 })
       : await client.from('workouts').insert({ id, user_id: userId, date: '2026-09-15', type: 'walk', duration_min: 30, calories: 100 })
     expect(seeded.error).toBeNull()
     let first = true
@@ -144,3 +144,73 @@ for (const table of ['meals', 'workouts']) {
     await expect(page.getByRole('alert')).toHaveCount(0)
   })
 }
+
+async function loseFirst(page: Page, table: string, method: string) {
+  let first = true
+  await page.route(`**/rest/v1/${table}**`, async route => {
+    if (first && route.request().method() === method) {
+      first = false
+      await route.fetch()
+      await route.abort('failed')
+    } else await route.continue()
+  })
+}
+async function seedFavorite() {
+  expect((await client.from('saved_items').insert({ id, user_id: userId, kind: 'food', name: 'E2E oats', unit: 'g', base_amount: 100, protein: 13, carbs: 60, fat: 7, calories: 380 })).error).toBeNull()
+}
+
+test('19 favorite edit retries a committed update with the submitted content', async ({ page }) => {
+  await seedFavorite()
+  await loseFirst(page, 'saved_items', 'PATCH')
+  await page.goto('/log')
+  await page.getByRole('button', { name: 'Edit E2E oats', exact: true }).click()
+  await page.getByLabel('Amount', { exact: true }).fill('50')
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Could not confirm the save')
+  expect((await records('saved_items'))[0]).toMatchObject({ base_amount: 50, calories: 190 })
+  await expect(page.getByLabel('Amount', { exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect(page).toHaveURL('http://127.0.0.1:5182/')
+  expect(await records('saved_items')).toEqual([expect.objectContaining({ id, base_amount: 50, calories: 190 })])
+})
+
+test('20 favorite removal handles a lost acknowledgement and retry', async ({ page }) => {
+  await seedFavorite()
+  await loseFirst(page, 'saved_items', 'DELETE')
+  page.on('dialog', dialog => dialog.accept())
+  await page.goto('/log')
+  await page.getByRole('button', { name: 'Edit E2E oats', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove favorite', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Could not confirm the deletion')
+  expect(await records('saved_items')).toHaveLength(0)
+  await page.getByRole('button', { name: 'Remove favorite', exact: true }).click()
+  await expect(page).toHaveURL('http://127.0.0.1:5182/')
+})
+
+test('21 knowledge save retries a committed insert without duplicating it', async ({ page }) => {
+  await loseFirst(page, 'knowledge', 'POST')
+  await page.goto('/knowledge')
+  await page.getByPlaceholder('Speak or type one knowledge point…').fill('fixture:knowledge')
+  await page.getByRole('button', { name: 'Tidy & save', exact: true }).click()
+  await page.getByRole('button', { name: 'Save to library', exact: true }).dblclick()
+  await expect(page.getByRole('alert')).toContainText('Could not confirm the save')
+  expect(await records('knowledge')).toHaveLength(1)
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Delete E2E protein tip', exact: true })).toBeVisible()
+  expect(await records('knowledge')).toEqual([expect.objectContaining({ title: 'E2E protein tip', tags: 'protein' })])
+})
+
+test('22 knowledge deletion handles a lost acknowledgement and retry', async ({ page }) => {
+  expect((await client.from('knowledge').insert({ id, user_id: userId, title: 'E2E protein tip', content: 'Spread protein across meals.', tags: 'protein' })).error).toBeNull()
+  await loseFirst(page, 'knowledge', 'DELETE')
+  page.on('dialog', dialog => dialog.accept())
+  await page.goto('/knowledge')
+  const button = page.getByRole('button', { name: 'Delete E2E protein tip', exact: true })
+  await button.click()
+  await expect(page.getByRole('alert')).toContainText('Could not confirm the deletion')
+  expect(await records('knowledge')).toHaveLength(0)
+  await button.click()
+  await expect(button).toHaveCount(0)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})

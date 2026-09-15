@@ -38,21 +38,27 @@ No database migration is required for this batch.
   work): 189 tests passed in 27 files. Store tests cover favorite and knowledge
   failure, conflict and retry; page tests cover Knowledge and the favorite editor.
 - TypeScript/API checks, lint, production build and `git diff --check` passed.
-- Added five browser scenarios: manual workout insert retry, conflicting insert
-  retry, failed workout editing with note clearing, and lost delete
-  acknowledgements for meals and workouts. Together with the existing 15
-  proposal scenarios, this defines 20 scenarios / 40 desktop and mobile runs.
-- The new database-backed browser scenarios have not run in this session:
-  Docker Desktop did not become ready and localhost:54321 was unavailable.
-  The hanging Docker CLI requests were interrupted; Docker's backend was not
-  forcibly terminated. No hosted database was used as a fallback.
-- The earlier 30-run E2E result is historical and does not certify this batch.
+- Browser scenarios added for this work: manual workout insert retry,
+  conflicting insert retry, failed workout editing with note clearing, lost
+  delete acknowledgements for meals and workouts, favorite edit and removal
+  with lost acknowledgements, and knowledge save and deletion with lost
+  acknowledgements. The E2E Vite server now also serves a synthetic
+  `/api/knowledge` response. With the 15 proposal scenarios this is
+  24 scenarios / 48 desktop and mobile runs.
+- 2026-09-15 local run against the disposable Supabase stack (all nine
+  migrations applied, no hosted database): 48/48 runs passed. The first full
+  run had 46 passes; the meal deletion scenario failed on both viewports
+  because its seeded name began with "Delete" and matched the row button as
+  well as the delete control. After renaming the seed, that scenario passed on
+  both viewports.
+- Docker Desktop previously failed to start because stale AF_UNIX socket files
+  in `%LOCALAPPDATA%\Docker\run` could not be removed. The folder was renamed to
+  `run.stale-20260915` (nothing deleted) and Docker recreated it.
 
 ## Limits and next work
 
-- Favorite and knowledge paths have no new browser scenarios yet; weight and
-  profile writes keep their earlier awaited/rollback behaviour without the
-  per-record guard or abort deadline.
+- Weight and profile writes keep their earlier awaited/rollback behaviour
+  without the per-record guard or abort deadline.
 - Stable form IDs and submitted payloads live in the mounted page. This does not
   provide reload/offline recovery, semantic deduplication after reopening a form,
   or a durable queue.
@@ -66,6 +72,6 @@ No database migration is required for this batch.
   or updateMeal methods. Tests distinguish those paths.
 - Request cancellation cannot establish whether a server transaction committed;
   errors therefore say the result could not be confirmed and preserve retry data.
-- Before release, run the full local E2E suite once Docker/Supabase is available,
-  then complete staging and physical iPhone acceptance. No commit, push, or
-  deployment was performed in this session.
+- Local E2E passing is not staging or device acceptance. Before release,
+  complete staging and physical iPhone acceptance. Nothing has been pushed or
+  deployed.
