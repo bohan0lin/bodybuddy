@@ -1,8 +1,9 @@
 import { proposalSchema } from '../api/_lib/contracts'
 import type { ActionProposal } from '../api/_lib/contracts'
-export const SCORER_VERSION = '2.0.0'
+export const SCORER_VERSION = '2.1.0'
 export type ExpectedAction = { type: 'log' | 'save' | 'workout'; fields?: Record<string, string | number | [number, number]> }
-export type Row = { id: string; suite: string; config: string; status: 'pass' | 'fail' | 'inconclusive'; detail: string; latencyMs: number; inputTokens?: number; outputTokens?: number; estimatedUsd?: number; toolCorrect?: boolean; argumentsCorrect?: boolean; incorrectMatch?: boolean }
+export type InconclusiveReason = 'configuration' | 'budget' | 'infrastructure'
+export type Row = { id: string; suite: string; config: string; status: 'pass' | 'fail' | 'inconclusive'; reason?: InconclusiveReason; detail: string; latencyMs: number; inputTokens?: number; outputTokens?: number; estimatedUsd?: number; reservedUsd?: number; toolCorrect?: boolean; argumentsCorrect?: boolean; incorrectMatch?: boolean; abstained?: boolean }
 export function scoreActions(proposals: unknown[], expected: ExpectedAction[]) {
   const parsed = proposals.map(p => proposalSchema.safeParse(p))
   if (parsed.some(p => !p.success)) return { pass: false, toolCorrect: false, argumentsCorrect: false, detail: 'Invalid proposal schema' }
@@ -22,13 +23,18 @@ export function scoreActions(proposals: unknown[], expected: ExpectedAction[]) {
 }
 export function scoreRetrieval(actual: { matched: boolean; name: string } | null, expected: string | null) {
   const name = actual?.matched ? actual.name : null
-  return { pass: name === expected, incorrectMatch: name !== null && name !== expected }
+  return { pass: name === expected, incorrectMatch: name !== null && name !== expected, abstained: name === null && expected !== null }
 }
 export function summarize(rows: Row[]) {
   const scored = rows.filter(row => row.status !== 'inconclusive')
   const passed = rows.filter(row => row.status === 'pass').length
+  const inconclusive = (reason: InconclusiveReason) => rows.filter(row => row.status === 'inconclusive' && row.reason === reason).length
   return { total: rows.length, passed, failed: scored.length - passed, inconclusive: rows.length - scored.length,
     passRate: scored.length ? passed / scored.length : null,
+    // Wrong accepted matches, abstentions and unavailable infrastructure are reported separately.
+    incorrectMatches: rows.filter(row => row.incorrectMatch).length,
+    abstentions: rows.filter(row => row.abstained).length,
+    inconclusiveReasons: { configuration: inconclusive('configuration'), budget: inconclusive('budget'), infrastructure: inconclusive('infrastructure') },
     status: !rows.length || rows.some(row => row.status === 'inconclusive') ? 'inconclusive' : rows.some(row => row.status === 'fail') ? 'fail' : 'pass',
     estimatedUsd: rows.length && rows.every(row => row.estimatedUsd !== undefined) ? rows.reduce((sum,row) => sum + row.estimatedUsd!,0) : null }
 }

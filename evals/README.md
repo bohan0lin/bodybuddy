@@ -16,18 +16,53 @@ npm run eval:compare -- before/report.json after/report.json
 ```
 
 Required provider keys: `GOOGLE_GENERATIVE_AI_API_KEY`, `OPENAI_API_KEY`, and/or
-`ANTHROPIC_API_KEY`. Retrieval uses only `EVAL_SUPABASE_URL` and
-`EVAL_SUPABASE_ANON_KEY`; no production `.env.local` is loaded. The evaluation
-catalog must have the new migrations, reviewed metadata, and seeded embeddings.
-Set `EVAL_EMBEDDING_MAX_USD_PER_QUERY` to a conservative per-query ceiling; it is
-reserved for budget control, not reported as a measured embedding cost.
+`ANTHROPIC_API_KEY`. No production `.env.local` is loaded.
 
-The case cap is global across suites/configurations. A cap below the complete
-matrix intentionally produces inconclusive results. Calls run sequentially with
-no automatic retries and a 60-second per-case timeout. Generation cost uses total
-reported tokens across tool steps. The budget stops subsequent calls once observed
-spend reaches the cap; the final bounded request can exceed it. An unknown charge
-halts further generation calls. Configure a provider-side hard limit if required.
+### Database isolation
+
+Every mode, including `--suite tools`, removes `SUPABASE_URL`, `VITE_SUPABASE_*`
+and `SUPABASE_SERVICE_ROLE_KEY` from the process before any lookup runs. The only
+database that can be queried is `EVAL_SUPABASE_URL` with `EVAL_SUPABASE_ANON_KEY`;
+setting only one of them, or pointing it at the application URL, stops the run.
+
+- With an evaluation catalog, retrieval cases and the assistant's `lookupNutrition`
+  tool use it in strict mode. A lookup failure makes that case inconclusive
+  (infrastructure) instead of silently becoming "no match".
+- Without one, tool-case lookups return no match without any network request.
+  The report records `toolRetrieval: "none"`; such runs are not comparable with
+  runs that used a catalog.
+
+Live runs read the queried `foods` rows (content columns, including embeddings)
+and record a SHA-256 `catalog.fingerprint`. The `scripts/foods.json` hash is only
+the local seed file. `eval:compare` requires equal fingerprints whenever either
+report used a catalog. The catalog must have the new migrations, reviewed
+metadata, and seeded embeddings. Set `EVAL_EMBEDDING_MAX_USD_PER_QUERY` to a
+conservative per-query ceiling; it is reserved for budget control (retrieval
+cases and tool lookups), not reported as a measured embedding cost.
+
+### Preflight and budgets
+
+Before any call, a live run checks the complete matrix: every model has a key,
+verified pricing and a non-placeholder ID; retrieval has the evaluation catalog,
+an embedding key and an embedding ceiling; `--max-cases` covers every group
+(76 for `all` with three models). Any issue stops the run with exit code 2 and a
+report listing the issues. `--allow-partial` runs the ready groups anyway; the
+missing groups remain inconclusive with a stated reason.
+
+Case and spending allowances are split per group (each retrieval strategy and
+each model) in proportion to case counts, so an early configuration cannot use a
+later configuration's budget. Calls run sequentially with no automatic retries
+and a 60-second per-case timeout. Generation cost uses total reported tokens
+across tool steps. A group stops once observed spend reaches its allowance; the
+final bounded request can exceed it. An unknown charge stops that group.
+Configure a provider-side hard limit if required.
+
+Inconclusive rows carry `reason`: `configuration`, `budget` or `infrastructure`.
+Reports count these separately from failures, and count wrong accepted matches
+separately from abstentions.
+
+The vector/hybrid retrieval groups are an ablation under identical metadata and
+unit filters, not a fixed legacy baseline. Do not describe them as "old vs new".
 
 Exit codes for live runs: 0 complete/pass, 1 complete/fail, 2 inconclusive. Dry runs
 exit successfully for valid configuration but explicitly contain zero scored cases.

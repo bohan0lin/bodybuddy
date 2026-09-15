@@ -2,6 +2,7 @@ import { generateText, tool, stepCountIs, type LanguageModel, type ModelMessage,
 import { randomUUID } from 'node:crypto'
 import { logInputSchema, saveInputSchema, workoutInputSchema, requests, type ActionProposal } from './contracts.js'
 import { MODEL } from './ai.js'
+import type { FoodMatch, FoodQuery } from './rag.js'
 
 type Macros = { protein: number; carbs: number; fat: number; calories: number }
 
@@ -48,6 +49,8 @@ export async function assistantChat(input: {
   date?: string
   model?: LanguageModel
   onUsage?: (usage: LanguageModelUsage) => void
+  // Evaluations inject an isolated lookup so no run can fall back to the application catalog.
+  lookup?: (query: FoodQuery) => Promise<FoodMatch | null>
 }, abortSignal?: AbortSignal): Promise<{ reply: string; actions: ActionProposal[] }> {
   const actions: AssistantAction[] = []
 
@@ -56,6 +59,7 @@ export async function assistantChat(input: {
       description: 'Retrieve reference nutrition without writing records. Values are per baseAmount in the returned unit; no match requires clarification or a labeled estimate.',
       inputSchema: requests.lookup,
       execute: async (query) => {
+        if (input.lookup) return { match: await input.lookup(query) }
         const { lookupFoods } = await import('./rag.js')
         const [match] = await lookupFoods([query], abortSignal)
         return { match }
