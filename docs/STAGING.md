@@ -1,6 +1,6 @@
 # Staging environment
 
-Updated: 2026-09-15. Covers section 4.2 of the
+Updated: 2026-09-16. Covers section 4.2 of the
 [technical improvement plan](./TECHNICAL_IMPROVEMENT_PLAN.md) and section 2 of
 [remaining agent work](./REMAINING_AGENT_WORK.md).
 
@@ -9,10 +9,27 @@ Updated: 2026-09-15. Covers section 4.2 of the
 | Part | State |
 |---|---|
 | Build guard, staging migration target, seed scripts, STAGING badge | Implemented and locally verified |
-| Supabase staging project, GitHub `Staging` environment, Vercel Preview variables | Not created; needs account access |
-| Stable staging URL and iPhone acceptance | Not started |
+| Supabase staging project and migrations | BodyBuddy-Staging exists; all nine migrations verified in the hosted dashboard |
+| Vercel Preview variables | Configured for `codex/agent-proposals-evaluations`; production values unchanged |
+| Stable staging URL and auth redirects | Configured; Preview Ready and STAGING sign-in page verified |
+| Seed data, authenticated isolation smoke test and iPhone acceptance | Still pending |
 
-Nothing below has been run against a hosted project.
+Verified deployment: `F8P8JVDnE1XumoUNET3enKASZKP9`, commit `851c778`.
+Stable URL: https://bodybuddy-git-codex-agent-proposals-evaluations-portfolio-0d83.vercel.app/
+
+The staging project is `czwqieocauwsctwufhrj`; production is `akzpgqovrhghtkeydryb`.
+Both the staging Site URL and its explicit root redirect point to the stable URL.
+Existing public-prefixed Vercel variables were stored as legacy secrets and could
+not be edited in place. Branch-specific Preview overrides were added for the
+staging URLs and anon keys, alongside the staging flag, production-ref guard and
+server-only service-role secret. Other branches do not inherit these overrides.
+Existing production settings and shared AI provider keys were preserved. No new
+credentials were created or rotated. GitHub environment secrets were not inspected
+in this browser session; hosted migration history was verified directly.
+
+The verified `851c778` deployment predates the recognition and review fixes in
+this update. Verify the new Preview commit after push. The login screen check is
+not authenticated database isolation acceptance.
 
 ## Safety rules built into the repository
 
@@ -24,6 +41,10 @@ Nothing below has been run against a hosted project.
   `PRODUCTION_SUPABASE_PROJECT_REF` is set, if they use a different project.
   Local and CI builds are not checked. Custom Supabase domains are not
   recognised and fail the check.
+- Browser and server URLs must resolve to the same Supabase project in both
+  Preview and Production. Two different non-production projects are rejected,
+  even though neither is production. An omitted server URL may still use the
+  browser URL fallback; a trailing slash does not change project identity.
 - Staging builds show a `STAGING` badge on every screen, including sign-in.
 - The **Deploy database migrations** workflow has a `target` input. Staging can
   be migrated from any branch; production still only from `main`. A staging run

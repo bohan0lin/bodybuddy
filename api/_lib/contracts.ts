@@ -21,7 +21,16 @@ export const actionSchema = z.discriminatedUnion('type', [
 ])
 export const proposalSchema = z.object({ actionId: z.uuid(), date: z.iso.date(), action: actionSchema }).strict()
 export type ActionProposal = z.infer<typeof proposalSchema>
-export const recognitionSchema = z.object({ items: z.array(z.object({ name, amount, unit, ...nutritionShape }).strict()).max(5) }).strict()
+export const recognitionSchema = z.object({ items: z.array(z.object({ name, amount, unit, ...nutritionShape }).strict()).max(5), labelBased: z.boolean().optional() }).strict()
+// Extract energy in its printed unit; conversion belongs to application code.
+export const recognitionExtractionSchema = z.object({
+  mode: z.enum(['nutrition_label', 'food_photo', 'unreadable_label']),
+  items: z.array(z.object({
+    name, amount, unit, protein: nutritionShape.protein, carbs: nutritionShape.carbs,
+    fat: nutritionShape.fat, energy: z.number().min(0).max(83680),
+    energyUnit: z.enum(['kJ', 'kcal']),
+  }).strict()).max(5),
+}).strict()
 export const foodMatchSchema = z.object({ query: name, matched: z.boolean(), name, nameEn: name.nullable(), unit, baseAmount: amount, ...nutritionShape, distance: z.number().min(0).max(2), method: z.enum(['exact','semantic']).optional(), source: z.string().max(500).optional() }).strict()
 export const knowledgeSchema = z.object({ relevant: z.boolean(), title: z.string().max(200), content: z.string().max(8000), tags: z.string().max(500) }).strict()
 const lang = z.enum(['zh', 'en']).optional()

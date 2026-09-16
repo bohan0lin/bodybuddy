@@ -80,13 +80,18 @@ export function assertFrozen(cases: object[], lock: { version: string; sha256: s
 }
 
 export interface ReportLike {
-  manifest: { dataset: string; versions: Record<string, string>; catalog?: { fingerprint: string | null }; toolRetrieval?: CatalogSource; retrievalSet?: { name: string; fingerprint: string } }
+  manifest: { dataset: string; scorer?: string; versions: Record<string, string>; catalog?: { fingerprint: string | null }; toolRetrieval?: CatalogSource; retrievalSet?: { name: string; fingerprint: string } }
   rows: Row[]
 }
 const usesCatalog = (report: ReportLike) => report.rows.some(row => row.suite === 'retrieval') || report.manifest.toolRetrieval === 'evaluation-database'
 
 // The local seed-file hash does not identify the queried catalog; only the recorded fingerprint does.
 export function assertComparable(before: ReportLike, after: ReportLike): void {
+  const scorerHash = before.manifest.versions['evals/scoring.ts']
+  if (!before.manifest.scorer || before.manifest.scorer !== after.manifest.scorer
+    || !scorerHash || scorerHash !== after.manifest.versions['evals/scoring.ts']) {
+    throw new Error('Both reports must record the same scorer version and scoring implementation; rerun with one scorer')
+  }
   if (before.manifest.dataset !== after.manifest.dataset || before.manifest.versions['evals/dataset.ts'] !== after.manifest.versions['evals/dataset.ts']) throw new Error('Dataset must match for a paired comparison')
   if (before.manifest.toolRetrieval !== after.manifest.toolRetrieval) throw new Error('Tool lookups must use the same retrieval source')
   const hasRetrieval = (report: ReportLike) => report.rows.some(row => row.suite === 'retrieval')

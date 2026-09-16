@@ -163,6 +163,32 @@ describe('all paid endpoint contracts', () => {
 })
 
 describe('request traces', () => {
+  it('reports a direct lookup outage as a sanitized retrieval failure', async () => {
+    mocks.lookup.mockRejectedValue(new Error('private provider key and query'))
+    const result = await call('lookup')
+    expect(result.statusCode).toBe(503)
+    expect(mocks.lookup).toHaveBeenCalledWith([{ name: 'rice' }], expect.any(AbortSignal), { strict: true })
+    expect(traces()).toEqual([expect.objectContaining({ outcome: 'failed', failedStage: 'retrieval', code: 'RETRIEVAL_UNAVAILABLE' })])
+    expect(JSON.stringify([result, traces()])).not.toMatch(/private provider/)
+  })
+  it('keeps a genuine no-match successful', async () => {
+    const result = await call('lookup')
+    expect(result.statusCode).toBe(200)
+    expect(result.body).toEqual({ match: null })
+    expect(traces()[0].steps).toContainEqual(expect.objectContaining({ stage: 'retrieval', outcome: 'ok' }))
+  })
+  it('records an outage before the assistant falls back to an estimate', async () => {
+    mocks.lookup.mockRejectedValue(new Error('private provider failure'))
+    mocks.assistant.mockImplementation(async input => {
+      expect(await input.lookup({ name: 'rice' })).toBeNull()
+      return { reply: 'Estimate only', actions: [] }
+    })
+    expect((await call('assistant')).statusCode).toBe(200)
+    const [trace] = traces()
+    expect(trace.outcome).toBe('completed')
+    expect(trace.steps).toContainEqual(expect.objectContaining({ stage: 'retrieval', outcome: 'error', code: 'RETRIEVAL_UNAVAILABLE' }))
+    expect(trace.failedStage).toBeUndefined()
+  })
   it('links a completed assistant request to model, retrieval and proposal IDs without content', async () => {
     const actionId = '10000000-0000-4000-8000-000000000001'
     mocks.assistant.mockImplementation(async (input) => {

@@ -28,3 +28,16 @@ it('does not score backend failure as a no-match during evaluation',async()=>{
   await expect(lookupFoods(['unknown'],undefined,{strict:true})).rejects.toThrow('unavailable')
   expect(await lookupFoods(['unknown'])).toEqual([null])
 })
+
+it('propagates embedding failures in strict mode', async () => {
+  mocks.rpc.mockResolvedValue({ data: [], error: null })
+  mocks.embed.mockRejectedValue(new Error('Embedding unavailable'))
+  const { lookupFoods } = await import('./rag.js')
+  await expect(lookupFoods(['rice'], undefined, { strict: true })).rejects.toThrow('Embedding unavailable')
+})
+
+it('returns no match for a successful empty lookup in strict mode', async () => {
+  mocks.rpc.mockResolvedValue({ data: [], error: null })
+  const { lookupFoods } = await import('./rag.js')
+  expect(await lookupFoods(['unknown'], undefined, { strict: true })).toEqual([null])
+})

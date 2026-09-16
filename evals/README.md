@@ -15,6 +15,12 @@ npm run eval -- --live --suite retrieval --max-cases 40 --max-usd 1
 npm run eval:compare -- before/report.json after/report.json
 ```
 
+Report comparisons require both the same `manifest.scorer` version and the same
+`evals/scoring.ts` implementation hash. Changed or missing scorer metadata is
+rejected, even if the dataset and catalog match. Rerun both configurations with
+one scorer before reporting an improvement; changing scoring rules alone is not
+evidence of model or retrieval improvement.
+
 Required provider keys: `GOOGLE_GENERATIVE_AI_API_KEY`, `OPENAI_API_KEY`, and/or
 `ANTHROPIC_API_KEY`. No production `.env.local` is loaded.
 

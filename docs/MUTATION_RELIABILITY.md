@@ -1,6 +1,7 @@
 # Meal and workout write reliability
 
-Updated: 2026-09-15. Work is uncommitted on `codex/agent-proposals-evaluations`.
+Updated: 2026-09-15. Base write-reliability work is committed on
+`codex/agent-proposals-evaluations`; the review fixes below are included in this update.
 
 ## Implemented in this batch
 
@@ -12,7 +13,12 @@ Updated: 2026-09-15. Work is uncommitted on `codex/agent-proposals-evaluations`.
   operations are rejected while that record is busy.
 - Callers supply a stable create ID. A duplicate insert reads and compares the
   existing row. Different content raises a conflict instead of overwriting it.
-- Older refresh responses cannot overwrite a confirmed mutation.
+- Refresh callers share an in-flight promise and wait for pending store writes
+  to settle, including failed writes. If a write or another refresh request
+  invalidates a snapshot, it is queried again before callers resolve. Current
+  query failures reject visibly and allow retry; stale responses are never
+  reported as a successfully applied refresh. Each read batch has a 20-second
+  abort deadline.
 - Database requests in these paths have a 20-second abort deadline.
 - Workout forms await saves/deletes, retain failures, prevent duplicate taps,
   and freeze the submitted content for uncertain-save retries. Invalid duration
@@ -34,7 +40,7 @@ No database migration is required for this batch.
 
 ## Verification
 
-- Current unit/component suite (2026-09-15, including the evaluation isolation
+- Historical unit/component suite (2026-09-15, including the evaluation isolation
   work): 189 tests passed in 27 files. Store tests cover favorite and knowledge
   failure, conflict and retry; page tests cover Knowledge and the favorite editor.
 - TypeScript/API checks, lint, production build and `git diff --check` passed.
@@ -73,5 +79,18 @@ No database migration is required for this batch.
 - Request cancellation cannot establish whether a server transaction committed;
   errors therefore say the result could not be confirmed and preserve retry data.
 - Local E2E passing is not staging or device acceptance. Before release,
-  complete staging and physical iPhone acceptance. Nothing has been pushed or
-  deployed.
+  complete staging and physical iPhone acceptance. The hosted staging setup is
+  documented separately in STAGING.md; production acceptance remains pending.
+
+## Review regression coverage
+
+The combined review and recognition regression suite covers 233 unit/component
+tests across 32 files, including all four review fixes. Application/API typechecks, lint and the production/PWA
+build pass. The earlier
+database/browser results above remain historical; they were not rerun for this
+review batch. No schema changes or database migrations are needed.
+
+The refresh regression tests cover a pending write succeeding or failing while
+an independently confirmed meal needs to appear, another refresh arriving during
+an older snapshot, a write invalidating a snapshot, and retry after a current
+read failure. These cases supplement the historical E2E result above.

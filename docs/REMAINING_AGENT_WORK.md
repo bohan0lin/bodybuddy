@@ -6,9 +6,13 @@ For the current code audit, Git status snapshot, and revised engineering priorit
 see [Technical improvement plan](./TECHNICAL_IMPROVEMENT_PLAN.md). The verification
 results below remain historical results for the specified commit, not a new run.
 
-The first uncommitted meal/workout reliability batch is documented in
-[Mutation reliability](./MUTATION_RELIABILITY.md), including its current test
-results and pending database-backed browser verification.
+The committed meal/workout, favorite and knowledge reliability work is documented
+in [Mutation reliability](./MUTATION_RELIABILITY.md), including historical local
+browser verification. The current review fixes add refresh-race regressions,
+accurate retrieval-failure traces, scorer compatibility checks and matching
+browser/server database checks. This update includes those fixes and nutrition-label
+priority handling; Preview deployment and real-device acceptance must be verified
+for the new commit after push.
 
 This document lists work that is still required before the resume bullets can be presented as verified outcomes.
 
@@ -27,8 +31,8 @@ device, and budget dependencies. It is not all blocked on the account owner:
 | 7. Timing study | Five consenting human testers |
 | 8. Production release | Sections 2 and 3, plus explicit approval |
 
-Outside this evidence checklist, ordinary store mutations still need reliable
-failure handling. Managed memory, durable task recovery, and measured context
+Outside this evidence checklist, reload/offline recovery and cross-device edit
+conflicts remain open. Managed memory, durable task recovery, and measured context
 optimization are future work; existing action receipts do not implement them.
 
 ## 1. Finish local verification after the latest edits — done 2026-09-09
@@ -57,7 +61,11 @@ the tree at `08f1ba8` only.
 Repository preparation is done and locally verified (2026-09-15): the Preview
 build guard, staging migration target, confirmed seed scripts, synthetic
 acceptance accounts and STAGING badge. Follow [Staging](./STAGING.md) for the
-account-side steps below; none of them has been performed yet.
+account-side steps below. On 2026-09-16, the hosted staging project and all nine
+migrations were verified, branch-specific Vercel Preview settings and auth URLs
+were configured, and deployment `F8P8JVDnE1XumoUNET3enKASZKP9` reached Ready at
+commit `851c778`. The STAGING login screen was verified. Seeding, authenticated
+write-isolation checks, latest local fixes and iPhone acceptance remain pending.
 
 - Create a separate Supabase staging project. Do not use production user data for E2E or manual testing.
 - Apply all current migrations to staging, including the agent action and retrieval migrations.

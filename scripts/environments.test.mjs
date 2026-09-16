@@ -28,7 +28,7 @@ it('seeds only an explicitly confirmed non-production project', () => {
 it('fails preview builds that are not isolated staging deployments', () => {
   const preview = { VERCEL_ENV: 'preview', VITE_APP_ENV: 'staging', PRODUCTION_SUPABASE_PROJECT_REF: production, VITE_SUPABASE_URL: url(staging) }
   expect(deployEnvironmentProblems(preview)).toEqual([])
-  expect(deployEnvironmentProblems({ ...preview, SUPABASE_URL: url(production) })).toEqual(['Preview builds must not use the production Supabase project'])
+  expect(deployEnvironmentProblems({ ...preview, SUPABASE_URL: url(production) })).toContain('Preview builds must not use the production Supabase project')
   expect(deployEnvironmentProblems({ ...preview, VITE_SUPABASE_URL: url(production) })).toHaveLength(1)
   expect(deployEnvironmentProblems({ ...preview, VITE_APP_ENV: undefined, PRODUCTION_SUPABASE_PROJECT_REF: undefined })).toHaveLength(2)
   expect(deployEnvironmentProblems({ ...preview, VITE_SUPABASE_URL: 'http://127.0.0.1:54321' })).toHaveLength(2)
@@ -38,7 +38,15 @@ it('keeps production builds on production and leaves local builds unchecked', ()
   const live = { VERCEL_ENV: 'production', PRODUCTION_SUPABASE_PROJECT_REF: production, VITE_SUPABASE_URL: url(production) }
   expect(deployEnvironmentProblems(live)).toEqual([])
   expect(deployEnvironmentProblems({ ...live, VITE_APP_ENV: 'staging' })).toHaveLength(1)
-  expect(deployEnvironmentProblems({ ...live, SUPABASE_URL: url(staging) })).toHaveLength(1)
+  expect(deployEnvironmentProblems({ ...live, SUPABASE_URL: url(staging) })).toContain('Production builds must use the PRODUCTION_SUPABASE_PROJECT_REF project')
   expect(deployEnvironmentProblems({ VITE_SUPABASE_URL: url(production), VITE_APP_ENV: 'staging' })).toEqual([])
   expect(deployEnvironmentProblems({ VERCEL_ENV: 'development' })).toEqual([])
+})
+
+it.each(['preview', 'production'])('requires one browser/server project for %s even without a production identity check', target => {
+  const config = { VERCEL_ENV: target, VITE_APP_ENV: target === 'preview' ? 'staging' : 'production',
+    PRODUCTION_SUPABASE_PROJECT_REF: target === 'preview' ? production : undefined, VITE_SUPABASE_URL: url(staging) }
+  expect(deployEnvironmentProblems({ ...config, SUPABASE_URL: url('aaaaaaaaaaaaaaaaaaaa') })).toContain('Browser and server must use the same Supabase project')
+  expect(deployEnvironmentProblems({ ...config, SUPABASE_URL: `${url(staging)}/` })).toEqual([])
+  expect(deployEnvironmentProblems(config)).toEqual([])
 })

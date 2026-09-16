@@ -14,8 +14,8 @@ import { MEAL_TYPES, type Meal, type MealType, type SavedItem } from '../types'
 const blank: FoodDraft = { name: '', amount: 1, unit: 'serving', calories: 0, carbs: 0, protein: 0, fat: 0 }
 const guessType = (): MealType => { const h = new Date().getHours(); return h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack' }
 
-export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onDone, onCancel }: {
-  initial: FoodDraft; photo?: string; date?: string; editMeal?: Meal; editSaved?: SavedItem; onDone: () => void; onCancel: () => void
+export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, labelBased, onDone, onCancel }: {
+  initial: FoodDraft; photo?: string; date?: string; editMeal?: Meal; editSaved?: SavedItem; labelBased?: boolean; onDone: () => void; onCancel: () => void
 }) {
   const { lang, t } = useT()
   const zh = lang === 'zh'
@@ -83,6 +83,9 @@ export function FoodEntryEditor({ initial, photo, date, editMeal, editSaved, onD
     <div className="float-card food-summary">
       <p className="eyebrow">{editSaved ? (zh ? '收藏食物' : 'FAVORITE FOOD') : (zh ? '确认这一餐' : 'REVIEW YOUR MEAL')}</p>
       <h2>{food.name || (zh ? '填写食物信息' : 'Add food details')}</h2>
+      {labelBased && <p className="muted">{zh
+        ? `按包装标签每 ${initial.amount} ${initial.unit} 读取。请核对数值，并将份量改为实际食用量。`
+        : `Read from the label per ${initial.amount} ${initial.unit}. Check the values and enter the amount you actually ate.`}</p>}
       <label className="food-amount">{zh ? '份量' : 'Amount'}
         <input aria-label={zh ? '份量' : 'Amount'} type="number" min="0.1" step="any" value={food.amount || ''} disabled={busy || attempted}
           onChange={(e) => setFood(base.amount > 0 ? scaleFood({ ...base, name: food.name, brand: food.brand, unit: food.unit }, Number(e.target.value)) : { ...food, amount: Number(e.target.value) })} />
@@ -141,6 +144,7 @@ export default function LogMeal() {
   const [file, setFile] = useState<File | null>(() => photoMode ? peekPendingPhoto() : null)
   const [photo, setPhoto] = useState('')
   const [result, setResult] = useState<FoodDraft | null>(null)
+  const [labelBased, setLabelBased] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
@@ -152,16 +156,17 @@ export default function LogMeal() {
     const controller = new AbortController()
     // Synchronize the visible status with this abortable file-processing request.
     // oxlint-disable-next-line react/set-state-in-effect
-    setBusy(true); setError(''); setResult(null); setPhoto('')
+    setBusy(true); setError(''); setResult(null); setPhoto(''); setLabelBased(false)
     void (async () => {
       try {
         const image = await fileToResizedBase64(file)
         if (controller.signal.aborted) return
         setPhoto(`data:${image.mediaType};base64,${image.data}`)
-        const response = await postJson<{ items: FoodDraft[] }>('/api/recognize', { image: image.data, mediaType: image.mediaType, lang }, controller.signal)
+        const response = await postJson<{ items: FoodDraft[]; labelBased?: boolean }>('/api/recognize', { image: image.data, mediaType: image.mediaType, lang }, controller.signal)
         if (controller.signal.aborted) return
         const combined = combineFoods(response.items)
-        if (!combined) throw new Error(zh ? '没有识别到食物，请重拍或填写营养数据。' : 'No food found. Retake the photo or enter its nutrition.')
+        if (!combined) throw new Error(zh ? '未能可靠读取食物或完整营养标签，请重拍或手动填写营养数据。' : 'Could not reliably read the food or complete nutrition label. Retake the photo or enter nutrition manually.')
+        setLabelBased(response.labelBased === true)
         setResult(combined)
       } catch (err) { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : t('log.recogEmpty')) }
       finally { if (!controller.signal.aborted) setBusy(false) }
@@ -203,6 +208,7 @@ export default function LogMeal() {
       </div>
     </>}
     {initial && <FoodEntryEditor key={`${picked?.id ?? edit?.id ?? 'photo'}-${retry}-${photo}`} initial={initial}
+      labelBased={photoMode && !edit && !picked && labelBased}
       photo={edit?.photoUrl ?? picked?.photoUrl ?? (photo || undefined)} date={state?.logDate} editMeal={edit}
       editSaved={editingSaved ? picked ?? undefined : undefined} onDone={done}
       onCancel={() => { if (picked) { setPicked(null); setEditingSaved(false) } else done() }} />}

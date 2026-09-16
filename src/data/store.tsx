@@ -66,6 +66,7 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
   const [reloadKey, setReloadKey] = useState(0)
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
   const refreshSequence = useRef(0)
+  const pendingRefresh = useRef<Promise<void> | null>(null)
   const pendingRecords = useRef(new Map<string, { signature: string; promise: Promise<void> }>())
   const mutateRecord = useCallback((key: string, signature: string, work: (signal: AbortSignal) => Promise<void>): Promise<void> => {
     const pending = pendingRecords.current.get(key)
@@ -78,15 +79,28 @@ export function StoreProvider({ userId, children }: { userId: string; children: 
     pendingRecords.current.set(key, { signature, promise })
     return promise
   }, [])
-  const refreshRecords = useCallback(async () => {
-    const sequence = ++refreshSequence.current
-    const [meals, workouts, saved] = await Promise.all([
-      supabase.from('meals').select('*').eq('user_id', userId),
-      supabase.from('workouts').select('*').eq('user_id', userId),
-      supabase.from('saved_items').select('*').eq('user_id', userId),
-    ])
-    if (meals.error || workouts.error || saved.error) throw new Error('Record refresh failed')
-    if (sequence === refreshSequence.current && pendingRecords.current.size === 0) setData(current => ({ ...current, meals: meals.data.map(toMeal), workouts: workouts.data.map(toWorkout), savedItems: saved.data.map(toSaved) }))
+  const refreshRecords = useCallback((): Promise<void> => {
+    ++refreshSequence.current
+    if (pendingRefresh.current) return pendingRefresh.current
+    // All callers wait for a current snapshot, including requests made during a write.
+    const refresh = Promise.resolve().then(async () => {
+      for (;;) {
+        await Promise.allSettled([...pendingRecords.current.values()].map(item => item.promise))
+        if (pendingRecords.current.size) continue
+        const sequence = refreshSequence.current
+        const [meals, workouts, saved] = await withRecordTimeout(signal => Promise.all([
+          supabase.from('meals').select('*').eq('user_id', userId).abortSignal(signal),
+          supabase.from('workouts').select('*').eq('user_id', userId).abortSignal(signal),
+          supabase.from('saved_items').select('*').eq('user_id', userId).abortSignal(signal),
+        ]))
+        if (sequence !== refreshSequence.current || pendingRecords.current.size) continue
+        if (meals.error || workouts.error || saved.error) throw new Error('Record refresh failed')
+        setData(current => ({ ...current, meals: meals.data.map(toMeal), workouts: workouts.data.map(toWorkout), savedItems: saved.data.map(toSaved) }))
+        return
+      }
+    }).finally(() => { pendingRefresh.current = null })
+    pendingRefresh.current = refresh
+    return refresh
   }, [userId])
 
   // 登录后拉取该用户全部数据

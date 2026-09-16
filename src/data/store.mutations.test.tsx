@@ -147,14 +147,69 @@ it('does not let a delayed refresh resurrect a deleted meal or overwrite a worko
   })
   await act(async () => {
     const refresh = store.current.refreshRecords()
-    await Promise.resolve()
+    await waitFor(() => expect(releases).toHaveLength(3))
     await store.current.deleteMeal('existing')
     await store.current.updateWorkout('existing', { durationMin: 45 })
+    db.query.mockImplementation(execute)
     releases.forEach(release => release())
     await refresh
   })
   expect(store.current.meals).toHaveLength(0)
   expect(store.current.workouts[0].durationMin).toBe(45)
+})
+
+it.each([false, true])('waits for a pending write (failed=%s) and loads independently confirmed meals', async fail => {
+  const store = await mount()
+  let release!: () => void
+  db.query.mockImplementation(q => q.op === 'update' ? new Promise(resolve => {
+    release = () => resolve(fail ? { data: null, error: { message: 'offline' } } : execute(q))
+  }) : execute(q))
+  await act(async () => {
+    const write = store.current.updateWorkout('existing', { durationMin: 45 }).catch(() => {})
+    await waitFor(() => expect(release).toBeDefined())
+    rows.meals.push({ ...rows.meals[0], id: 'agent-meal', name: 'Confirmed elsewhere' })
+    let finished = false
+    const refresh = store.current.refreshRecords()
+    const second = store.current.refreshRecords()
+    expect(second).toBe(refresh)
+    void refresh.then(() => { finished = true })
+    await Promise.resolve()
+    expect(finished).toBe(false)
+    release()
+    await write
+    await refresh
+  })
+  expect(store.current.meals.some(row => row.id === 'agent-meal')).toBe(true)
+  expect(store.current.workouts[0].durationMin).toBe(fail ? 30 : 45)
+})
+
+it('re-reads when a second refresh arrives during the first snapshot', async () => {
+  const store = await mount()
+  const releases: (() => void)[] = []
+  db.query.mockImplementation(q => {
+    const snapshot = execute(q)
+    return new Promise(resolve => releases.push(() => resolve(snapshot)))
+  })
+  await act(async () => {
+    const first = store.current.refreshRecords()
+    await waitFor(() => expect(releases).toHaveLength(3))
+    rows.meals.push({ ...rows.meals[0], id: 'later-confirmation' })
+    const second = store.current.refreshRecords()
+    db.query.mockImplementation(execute)
+    releases.forEach(release => release())
+    await Promise.all([first, second])
+  })
+  expect(store.current.meals.some(row => row.id === 'later-confirmation')).toBe(true)
+})
+
+it('reports a current refresh failure and permits a later retry', async () => {
+  const store = await mount()
+  db.query.mockReturnValue({ data: null, error: { message: 'offline' } })
+  await act(async () => { await expect(store.current.refreshRecords()).rejects.toThrow('refresh failed') })
+  db.query.mockImplementation(execute)
+  rows.meals.push({ ...rows.meals[0], id: 'after-reconnect' })
+  await act(async () => { await store.current.refreshRecords() })
+  expect(store.current.meals.some(row => row.id === 'after-reconnect')).toBe(true)
 })
 
 it('keeps a failed knowledge draft out of the store and recovers a lost insert acknowledgement', async () => {

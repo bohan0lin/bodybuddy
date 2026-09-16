@@ -35,6 +35,7 @@ export function deployEnvironmentProblems(env) {
   const serverRef = projectRef(env.SUPABASE_URL || env.VITE_SUPABASE_URL)
   if (!browserRef || browserRef === 'local') problems.push('VITE_SUPABASE_URL must be a hosted https://<project-ref>.supabase.co URL')
   if (!serverRef || serverRef === 'local') problems.push('SUPABASE_URL (or VITE_SUPABASE_URL) must be a hosted https://<project-ref>.supabase.co URL')
+  if (browserRef && serverRef && browserRef !== serverRef) problems.push('Browser and server must use the same Supabase project')
   if (target === 'preview') {
     if (env.VITE_APP_ENV !== 'staging') problems.push('Preview builds must set VITE_APP_ENV=staging')
     if (!productionRef) problems.push('Preview builds must set PRODUCTION_SUPABASE_PROJECT_REF so the production project can be refused')

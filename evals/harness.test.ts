@@ -49,7 +49,7 @@ it('fingerprints catalog content independently of row and key order', () => {
 })
 
 it('refuses comparisons across different or unrecorded catalogs', () => {
-  const report = (fingerprint: string | null): ReportLike => ({ manifest: { dataset: 'd', versions: { 'evals/dataset.ts': 'h' }, catalog: { fingerprint }, toolRetrieval: 'evaluation-database' },
+  const report = (fingerprint: string | null): ReportLike => ({ manifest: { dataset: 'd', scorer: '2.1.0', versions: { 'evals/dataset.ts': 'h', 'evals/scoring.ts': 'scorer-hash' }, catalog: { fingerprint }, toolRetrieval: 'evaluation-database' },
     rows: [{ id: 'r01', suite: 'retrieval', config: 'hybrid', status: 'pass', detail: '', latencyMs: 1 }] })
   expect(() => assertComparable(report('x'), report('x'))).not.toThrow()
   expect(() => assertComparable(report('x'), report('y'))).toThrow('catalog fingerprint')
@@ -58,6 +58,21 @@ it('refuses comparisons across different or unrecorded catalogs', () => {
   const withSet = (fingerprint: string): ReportLike => ({ ...report('x'), manifest: { ...report('x').manifest, retrievalSet: { name: 'holdout', fingerprint } } })
   expect(() => assertComparable(withSet('a'), withSet('a'))).not.toThrow()
   expect(() => assertComparable(withSet('a'), withSet('b'))).toThrow('same retrieval case set')
+})
+
+it('requires both scorer version and implementation hash for comparisons', () => {
+  const base: ReportLike = { manifest: { dataset: 'd', scorer: '2.1.0', versions: { 'evals/dataset.ts': 'data', 'evals/scoring.ts': 'original' }, toolRetrieval: 'none' }, rows: [] }
+  expect(() => assertComparable(base, structuredClone(base))).not.toThrow()
+  const changed = structuredClone(base)
+  changed.manifest.versions['evals/scoring.ts'] = 'different-code'
+  expect(() => assertComparable(base, changed)).toThrow('same scorer')
+  const bumped = structuredClone(base)
+  bumped.manifest.scorer = '3.0.0'
+  expect(() => assertComparable(base, bumped)).toThrow('same scorer')
+  const legacy = structuredClone(base)
+  delete legacy.manifest.scorer
+  delete legacy.manifest.versions['evals/scoring.ts']
+  expect(() => assertComparable(legacy, legacy)).toThrow('same scorer')
 })
 
 it('refuses a holdout whose cases no longer match the lock', () => {

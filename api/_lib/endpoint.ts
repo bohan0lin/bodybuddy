@@ -60,7 +60,15 @@ export function createEndpoint(endpoint: Endpoint) {
       const retrieve = (queries: FoodQuery[], signal?: AbortSignal) => trace.step('retrieval', async () => {
         trace.record({ retrievalVersion: RETRIEVAL_VERSION })
         const { lookupFoods } = await import('./rag.js')
-        return lookupFoods(queries, signal)
+        try { return await lookupFoods(queries, signal, { strict: true }) }
+        catch {
+          if (signal?.aborted) throw signal.reason
+          throw new ApiError(503, 'RETRIEVAL_UNAVAILABLE', 'Nutrition lookup is unavailable. Please retry.')
+        }
+      }).catch(error => {
+        // Preserve the failed retrieval step before allowing a labeled estimate.
+        if (endpoint === 'lookup' || signal?.aborted) throw error
+        return queries.map(() => null)
       })
       let result: unknown
       // Narrow each contract separately; model modules load only after authentication/validation.

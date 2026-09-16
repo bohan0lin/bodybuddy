@@ -18,6 +18,14 @@ beforeEach(() => { vi.resetAllMocks(); mocks.saved = []; mocks.record.mockResolv
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
 describe('food entry', () => {
+  it('shows the label basis and scales nutrition to the actual amount eaten', async () => {
+    render(<FoodEntryEditor initial={{ ...food, calories: 399, protein: 12, carbs: 46.5, fat: 18.2 }} labelBased onDone={vi.fn()} onCancel={vi.fn()} />)
+    expect(screen.getByText(/Read from the label per 100 g/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '50' } })
+    fireEvent.click(screen.getByText('Log meal'))
+    await waitFor(() => expect(mocks.record).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ amount: 50, calories: 200, protein: 6, carbs: 23.3, fat: 9.1 }), false))
+  })
+
   it('retains a failed favorite edit and freezes its exact retry', async () => {
     mocks.updateSavedItem.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined)
     const done = vi.fn()

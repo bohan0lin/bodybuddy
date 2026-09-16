@@ -32,6 +32,15 @@ deadline fires while a stage is still running, the request has
 `outcome: "timeout"` and `failedStage` names that stage; the unfinished stage has
 no entry in `steps`.
 
+Nutrition retrieval uses strict error propagation inside the traced step.
+Database/configuration/embedding failures are sanitized as
+`RETRIEVAL_UNAVAILABLE` (503); a successful query with no match remains an `ok`
+retrieval step. The direct `lookup` endpoint returns the 503 to its caller.
+Assistant and photo requests may continue with an unverified estimate after the
+failed step is recorded, so a completed request can contain a retrieval error.
+Cancellation and timeout propagate without estimate fallback. Provider error
+text is never copied into the public error or log line.
+
 System prompts contain no account data, so `promptVersion` changes when prompt
 text changes and differs between the Chinese and English variants.
 
