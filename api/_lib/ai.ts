@@ -6,6 +6,8 @@ import { recognitionExtractionSchema, recognitionSchema } from './contracts.js'
 import { lookupFoods, type FoodMatch, type FoodQuery } from './rag.js'
 import { nutritionRatio } from './retrieval.js'
 import { describeModel, type ModelHooks } from './trace.js'
+import { recognitionModelRequest } from './model-request.js'
+import { ApiError } from './http.js'
 
 // ══════════════════════════════════════════════════════════════
 // 切换 AI 只需改下面这一行 MODEL（对应的 key 放到 .env.local / Vercel 环境变量）：
@@ -116,7 +118,6 @@ export async function recognizeFood(
   abortSignal?: AbortSignal,
   hooks: ModelHooks & { lookup?: (queries: FoodQuery[], signal?: AbortSignal) => Promise<(FoodMatch | null)[]> } = {},
 ): Promise<{ items: RecognizedItem[]; labelBased?: boolean }> {
-  const dataUrl = `data:${mediaType || 'image/jpeg'};base64,${imageBase64}`
   const nameRule =
     lang === 'en'
       ? '- name in English, concise.'
@@ -135,7 +136,7 @@ ${nameRule}
 - Return at most 5 items; all nutrition values refer to each item's amount/unit. Do not return the same product twice for different label columns. If no food or label is identifiable, return empty items.`
 
   hooks.onModel?.(describeModel(MODEL, system))
-  const { object, usage } = await generateObject({
+  const { object, usage } = await recognitionModelRequest(() => generateObject({
     model: MODEL,
     schema: recognitionExtractionSchema,
     system,
@@ -147,20 +148,24 @@ ${nameRule}
         role: 'user',
         content: [
           { type: 'text', text: 'Read the nutrition label if present; otherwise identify the food and estimate nutrition.' },
-          { type: 'image', image: dataUrl },
+          { type: 'file', mediaType: mediaType || 'image/jpeg', data: { type: 'data', data: imageBase64 } },
         ],
       },
     ],
-  })
+  }), abortSignal)
 
   hooks.onUsage?.(usage)
 
-  const extracted = recognitionExtractionSchema.parse(object)
+  const extraction = recognitionExtractionSchema.safeParse(object)
+  if (!extraction.success) throw new ApiError(502, 'INVALID_MODEL_RESPONSE', 'AI returned invalid nutrition. Please retry.')
+  const extracted = extraction.data
   if (extracted.mode === 'unreadable_label') return { items: [] }
   if (extracted.mode === 'nutrition_label' && extracted.items.length !== 1) return { items: [] }
-  let items: RecognizedItem[] = recognitionSchema.parse({ items: extracted.items.map(({ energy, energyUnit, ...item }) => ({
+  const normalized = recognitionSchema.safeParse({ items: extracted.items.map(({ energy, energyUnit, ...item }) => ({
     ...item, calories: Math.round(energyUnit === 'kJ' ? energy / 4.184 : energy),
-  })) }).items
+  })) })
+  if (!normalized.success) throw new ApiError(502, 'INVALID_MODEL_RESPONSE', 'AI returned invalid nutrition. Please retry.')
+  let items: RecognizedItem[] = normalized.data.items
   // Printed product data must never be replaced by a generic catalog match.
   if (extracted.mode === 'nutrition_label') return { items, labelBased: true }
   if (!items.length) return { items }

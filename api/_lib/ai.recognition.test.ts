@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ generate: vi.fn(), lookup: vi.fn() }))
-vi.mock('ai', () => ({ generateObject: mocks.generate, generateText: vi.fn() }))
+vi.mock('ai', async (original) => ({ ...await original<object>(), generateObject: mocks.generate, generateText: vi.fn() }))
 vi.mock('./rag.js', () => ({ lookupFoods: mocks.lookup }))
 import { recognizeFood } from './ai.js'
 

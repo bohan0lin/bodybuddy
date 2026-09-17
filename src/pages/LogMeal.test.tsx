@@ -4,11 +4,12 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LogMeal, { FoodEntryEditor } from './LogMeal'
 import { setPendingPhoto } from '../lib/photoHandoff'
+import { ApiRequestError } from '../lib/api'
 
 const mocks = vi.hoisted(() => ({ record: vi.fn(), upload: vi.fn(), api: vi.fn(), reload: vi.fn(), updateSavedItem: vi.fn(), deleteSavedItem: vi.fn(), t: (key: string) => key, saved: [] as unknown[] }))
 vi.mock('../data/store', () => ({ useStore: () => ({ savedItems: mocks.saved, reload: mocks.reload, updateSavedItem: mocks.updateSavedItem, deleteSavedItem: mocks.deleteSavedItem }) }))
 vi.mock('../lib/i18n', () => ({ useT: () => ({ lang: 'en', t: mocks.t }) }))
-vi.mock('../lib/api', () => ({ postJson: (...args: unknown[]) => mocks.api(...args) }))
+vi.mock('../lib/api', async (original) => ({ ...await original<object>(), postJson: (...args: unknown[]) => mocks.api(...args) }))
 vi.mock('../lib/image', () => ({ fileToResizedBase64: async () => ({ data: 'abc', mediaType: 'image/jpeg' }) }))
 vi.mock('../components/FoodPhoto', () => ({ default: ({ path, alt }: { path: string; alt: string }) => path ? <img src={path} alt={alt} /> : <span>No photo</span> }))
 vi.mock('../lib/foodEntry', async (original) => ({ ...await original<object>(), recordFoodEntry: (...args: unknown[]) => mocks.record(...args), uploadFoodPhoto: (...args: unknown[]) => mocks.upload(...args) }))
@@ -136,6 +137,17 @@ describe('food entry', () => {
     expect(screen.getByText('Calibrate nutrition')).toBeTruthy()
     expect(screen.getByAltText('Food photo')).toBeTruthy()
     expect(mocks.api).toHaveBeenCalledOnce()
+  })
+
+  it('shows a provider error and request ID without recording a failed recognition', async () => {
+    mocks.api.mockRejectedValue(new ApiRequestError(503, 'AI_UNAVAILABLE', 'The AI service is temporarily unavailable.', 'req-photo'))
+    setPendingPhoto(new File(['image'], 'meal.jpg', { type: 'image/jpeg' }))
+    render(<MemoryRouter initialEntries={['/capture']}><LogMeal /></MemoryRouter>)
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain('AI_UNAVAILABLE')
+    expect(alert.textContent).toContain('Request ID: req-photo')
+    expect(screen.getByText('Enter nutrition')).toBeTruthy()
+    expect(mocks.record).not.toHaveBeenCalled()
   })
 
   it('requires valid calibration before recording and preserves explicit zero calories', async () => {

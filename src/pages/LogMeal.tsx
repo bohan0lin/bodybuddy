@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { useT } from '../lib/i18n'
 import { todayStr } from '../lib/nutrition'
-import { postJson } from '../lib/api'
+import { ApiRequestError, postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { peekPendingPhoto, takePendingPhoto } from '../lib/photoHandoff'
 import { combineFoods, recordFoodEntry, scaleFood, uploadFoodPhoto, type FoodDraft } from '../lib/foodEntry'
@@ -168,7 +168,11 @@ export default function LogMeal() {
         if (!combined) throw new Error(zh ? '未能可靠读取食物或完整营养标签，请重拍或手动填写营养数据。' : 'Could not reliably read the food or complete nutrition label. Retake the photo or enter nutrition manually.')
         setLabelBased(response.labelBased === true)
         setResult(combined)
-      } catch (err) { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : t('log.recogEmpty')) }
+      } catch (err) {
+        if (!controller.signal.aborted) setError(err instanceof ApiRequestError
+          ? `${err.message} (${err.code}${err.requestId ? `; Request ID: ${err.requestId}` : ''})`
+          : err instanceof Error ? err.message : t('log.recogEmpty'))
+      }
       finally { if (!controller.signal.aborted) setBusy(false) }
     })()
     return () => controller.abort()
