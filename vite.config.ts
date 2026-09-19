@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
   if (env.SUPABASE_SERVICE_ROLE_KEY) process.env.SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY
 
   return {
+    define: { 'import.meta.env.VITE_BUILD_ID': JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'local') },
     plugins: [
       react(),
       apiDevPlugin(),

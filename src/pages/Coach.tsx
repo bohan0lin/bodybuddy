@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { todayStr } from '../lib/nutrition'
-import { postJson } from '../lib/api'
+import { ApiRequestError, postJson } from '../lib/api'
 import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
 import { createVoiceController, type VoiceState } from '../lib/voice'
@@ -110,9 +110,9 @@ export default function Coach() {
       const res = responses.assistant.parse(await postJson<unknown>('/api/assistant', { messages: payloadMsgs, date: todayStr(), hour: new Date().getHours(), lang }))
       setMessages((ms) => [...ms, { role: 'assistant', text: res.reply, actions: res.actions }])
     } catch (e) {
-      const msg = e instanceof Error ? e.message : ''
-      const busy = /503|overload|unavailable|429|rate limit/i.test(msg)
-      setMessages((ms) => [...ms, { role: 'assistant', text: busy ? t('assistant.busy') : t('assistant.failed') + (msg ? '\n\n[' + msg + ']' : '') }])
+      const busy = e instanceof ApiRequestError && (e.status === 503 || e.status === 429)
+      const reference = e instanceof ApiRequestError && e.requestId ? `\n\n[${e.code} · ${e.requestId}]` : ''
+      setMessages((ms) => [...ms, { role: 'assistant', text: (busy ? t('assistant.busy') : t('assistant.failed')) + reference }])
     } finally {
       setLoading(false)
       scrollDown()

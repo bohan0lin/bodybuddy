@@ -2,7 +2,7 @@ import { APICallError, NoObjectGeneratedError } from 'ai'
 import { setTimeout as delay } from 'node:timers/promises'
 import { ApiError } from './http.js'
 
-function publicModelError(error: unknown): unknown {
+export function publicModelError(error: unknown): unknown {
   if (NoObjectGeneratedError.isInstance(error)) {
     return new ApiError(502, 'INVALID_MODEL_RESPONSE', 'AI could not produce a valid result. Please retry.')
   }
@@ -16,7 +16,7 @@ function publicModelError(error: unknown): unknown {
   if (error.statusCode !== undefined && error.statusCode >= 500) {
     return new ApiError(503, 'AI_UNAVAILABLE', 'The AI service is temporarily unavailable. Please try again shortly.')
   }
-  return new ApiError(502, 'AI_REQUEST_REJECTED', 'The AI provider could not process this request. Please retry or use another photo.')
+  return new ApiError(502, 'AI_REQUEST_REJECTED', 'The AI provider could not process this request. Please retry.')
 }
 
 // Retry temporary provider failures once, within the original request deadline.

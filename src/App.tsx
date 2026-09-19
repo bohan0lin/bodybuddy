@@ -8,6 +8,7 @@ import BottomNav from './components/BottomNav'
 import Today from './pages/Today'
 import Login from './pages/Login'
 import { installKeyboardRecovery } from './lib/keyboardRecovery'
+import StagingDiagnostics from './components/StagingDiagnostics'
 
 // 首页与外壳留在初始包；其余路由按需加载，减小首屏 JS
 const Body = lazy(() => import('./pages/Body'))
@@ -130,19 +131,10 @@ function AppContent() {
 }
 
 // Marks staging builds on every screen, including sign-in, so testers can see which database they are using.
-function EnvironmentBadge() {
-  return (
-    <div role="status" aria-label="Staging environment" style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top) + 4px)', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, pointerEvents: 'none',
-      padding: '2px 10px', borderRadius: 999, background: '#b8860b', color: '#0a0a0b', fontSize: 10, fontWeight: 700, letterSpacing: '0.18em' }}>
-      STAGING
-    </div>
-  )
-}
-
 export default function App() {
   return (
     <>
-      {import.meta.env.VITE_APP_ENV === 'staging' && <EnvironmentBadge />}
+      {import.meta.env.VITE_APP_ENV === 'staging' && <StagingDiagnostics />}
       <AppContent />
     </>
   )

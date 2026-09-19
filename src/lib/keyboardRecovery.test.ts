@@ -64,6 +64,24 @@ it('does not snap the page when moving between inputs with an open keyboard', ()
   expect(scroll).not.toHaveBeenCalled()
 })
 
+it('releases stale input focus on a blank tap and recovers after the animation', () => {
+  open()
+  document.querySelector('main')!.click()
+  expect(document.activeElement).toBe(document.body)
+  vi.advanceTimersByTime(1250)
+  expect(scroll).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'instant' })
+})
+
+it('does not blur controls on interactive taps or while selecting text', () => {
+  open()
+  document.querySelector('button')!.click()
+  expect(document.activeElement).toBe(document.querySelector('input'))
+  vi.spyOn(window, 'getSelection').mockReturnValue({ toString: () => 'selected' } as Selection)
+  document.querySelector('main')!.click()
+  expect(document.activeElement).toBe(document.querySelector('input'))
+  expect(scroll).not.toHaveBeenCalled()
+})
+
 it('does not interfere with zoom or misread rotation as keyboard dismissal', () => {
   open()
   viewport.height = 800

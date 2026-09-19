@@ -42,7 +42,7 @@ export function installKeyboardRecovery(): () => void {
     if (!active) return
     clearTimers()
     // Several bounded checks cover delayed keyboard animation and viewport events.
-    for (const ms of [150, 400, 800]) {
+    for (const ms of [150, 400, 800, 1200]) {
       const timer = setTimeout(() => { timers.delete(timer); schedule() }, ms)
       timers.add(timer)
     }
@@ -56,8 +56,17 @@ export function installKeyboardRecovery(): () => void {
     }
     active = true
   }
+  function outsideTap(event: MouseEvent) {
+    if (!editing() || !(event.target instanceof Element)) return
+    // Safari can dismiss its keyboard on a blank tap while retaining DOM focus.
+    // Explicitly release focus so delayed recovery is not mistaken for typing.
+    if (event.target.closest('input, textarea, select, button, a, label, [role="button"], [contenteditable]')) return
+    if (window.getSelection()?.toString()) return
+    ;(document.activeElement as HTMLElement).blur()
+  }
   document.addEventListener('focusin', focus)
   document.addEventListener('focusout', settle)
+  document.addEventListener('click', outsideTap)
   document.addEventListener('visibilitychange', settle)
   window.addEventListener('pageshow', settle)
   window.addEventListener('resize', schedule)
@@ -68,6 +77,7 @@ export function installKeyboardRecovery(): () => void {
     cancelAnimationFrame(frame)
     document.removeEventListener('focusin', focus)
     document.removeEventListener('focusout', settle)
+    document.removeEventListener('click', outsideTap)
     document.removeEventListener('visibilitychange', settle)
     window.removeEventListener('pageshow', settle)
     window.removeEventListener('resize', schedule)
