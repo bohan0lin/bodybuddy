@@ -7,6 +7,7 @@ import { useT } from './lib/i18n'
 import BottomNav from './components/BottomNav'
 import Today from './pages/Today'
 import Login from './pages/Login'
+import { installKeyboardRecovery } from './lib/keyboardRecovery'
 
 // 首页与外壳留在初始包；其余路由按需加载，减小首屏 JS
 const Body = lazy(() => import('./pages/Body'))
@@ -79,6 +80,9 @@ function AuthedApp() {
   const { loading, hydrationError, reload } = useStore()
   const { pathname } = useLocation()
   const contentRef = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    if (!loading && !hydrationError) return installKeyboardRecovery()
+  }, [loading, hydrationError])
   useLayoutEffect(() => {
     if (contentRef.current) contentRef.current.scrollTop = 0
   }, [pathname])
