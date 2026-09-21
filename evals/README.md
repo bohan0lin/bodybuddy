@@ -4,6 +4,33 @@
 model calls. Reports are written under ignored `evals/results/` as JSON and Markdown.
 Synthetic datasets contain no beta-user messages, photos or health records.
 
+### September 2026 evaluation work
+
+`models.google.json` compares three models accessible to the configured Google
+key: Gemini 3.5 Flash-Lite, the application's Gemini 3.6 Flash, and Gemini 3.8
+Flash. Availability was checked with the provider models endpoint on 2026-09-19.
+Prices were verified that day against the standard paid tier at
+https://ai.google.dev/gemini-api/docs/pricing . Flash 3.6/3.8 rates in this file
+expire after 2026-12-31; recheck before later runs. This is a three-model comparison
+within one provider, not a comparison of three providers.
+
+An explicit local wrapper reads only the three provider-key names from
+`.env.local`; it never imports database credentials from that file:
+
+```sh
+node --import tsx evals/local-run.mjs --live --suite tools --config evals/models.google.json --max-cases 36 --max-usd 0.5
+node evals/summarize-run.mjs evals/results/<run>/report.json
+node evals/catalog-audit.mjs
+```
+
+The direct runner still does not load `.env.local`. Application database isolation
+also applies to the wrapper. Missing token usage stops the affected group even
+when its monetary allowance is not exhausted. Preserve inconclusive attempts.
+The summary reports tool/argument correctness, latency and known token cost,
+and refuses to describe incomplete coverage as a completed comparison.
+
+See `docs/CATALOG_AUDIT.md` for the catalog provenance and unit review.
+
 `models.example.json` contains two existing model IDs and one explicitly unresolved
 candidate. Set real supported model IDs and verified input/output prices before
 live testing. No prices are invented; missing prices or keys yield inconclusive

@@ -11,6 +11,7 @@ import { lookupFoods, type FoodQuery } from '../api/_lib/rag'
 import { RETRIEVAL_VERSION } from '../api/_lib/retrieval'
 import type { Database } from '../src/lib/database.types'
 import { assistantContext } from './cases'
+import { failureDetail } from './failure'
 import { DATASET_VERSION, retrievalCases, toolCases } from './dataset'
 import { HOLDOUT_VERSION, retrievalHoldout } from './holdout'
 import { assertFrozen, catalogFingerprint, configIssues, datasetFingerprint, embeddingBudget, hasAllowance, isolateEvaluationEnv, planGroups, retrievalIssues, type GroupUsage, type RunGroup } from './harness'
@@ -73,7 +74,7 @@ const run = mode === 'live' && (!preflight.length || allowPartial)
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 // scripts/foods.json is the local seed file only; catalog.fingerprint identifies what was actually queried.
-const versions = Object.fromEntries(await Promise.all(['api/_lib/assistant.ts','api/_lib/contracts.ts','api/_lib/retrieval.ts','scripts/foods.json','evals/dataset.ts','evals/scoring.ts','evals/harness.ts','evals/holdout.ts','evals/holdout.lock.json'].map(async file => [file, hash(await readFile(file,'utf8'))])))
+const versions = Object.fromEntries(await Promise.all(['api/_lib/assistant.ts','api/_lib/contracts.ts','api/_lib/retrieval.ts','api/_lib/model-request.ts','scripts/foods.json','evals/run.ts','evals/failure.ts','evals/dataset.ts','evals/scoring.ts','evals/harness.ts','evals/holdout.ts','evals/holdout.lock.json'].map(async file => [file, hash(await readFile(file,'utf8'))])))
 const manifest = { dataset: DATASET_VERSION, scorer: SCORER_VERSION, retrieval: RETRIEVAL_VERSION,
   retrievalComparison: 'Ablation of vector-only and hybrid selection under identical metadata and unit filters; not a fixed legacy baseline',
   versions, commit: execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), dirty: Boolean(execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim()),
@@ -121,7 +122,9 @@ if (mode === 'live') for (const group of plan.groups) {
     const start = performance.now()
     const row: Row = { id: c.id, suite: 'tools', config: config.id, status: 'inconclusive', reason: 'configuration', detail: issues.join('; ') || lookupIssue || blocked, latencyMs: 0 }
     if (run && !issues.length && !lookupIssue) {
-      if (!hasAllowance(group, used)) Object.assign(row, exhausted)
+      if (!hasAllowance(group, used)) Object.assign(row, used.unknownSpend
+        ? { reason: 'budget', detail: 'Stopped because a previous request has unknown cost; allowance was not necessarily exhausted' }
+        : exhausted)
       else {
         used.calls++
         const signal = AbortSignal.timeout(60000)
@@ -141,13 +144,14 @@ if (mode === 'live') for (const group of plan.groups) {
             const score = scoreActions(result.actions, c.expected)
             scored(row, score.pass, score.detail, { toolCorrect: score.toolCorrect, argumentsCorrect: score.argumentsCorrect })
           }
-        } catch { Object.assign(row, { reason: 'infrastructure', detail: 'Provider unavailable, timed out, or returned an invalid result' }) }
+        } catch (error) { Object.assign(row, { reason: 'infrastructure', detail: failureDetail(error) }) }
         if (lookups) { row.reservedUsd = lookups * embeddingUsd!; used.spent += row.reservedUsd }
         if (row.estimatedUsd === undefined) used.unknownSpend = true
         else used.spent += row.estimatedUsd
       }
     }
     row.latencyMs = Math.round(performance.now() - start); rows.push(row)
+    console.log(`${group.config}/${c.id}: ${row.status} (${row.latencyMs} ms)`)
   }
 }
 

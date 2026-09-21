@@ -1,0 +1,533 @@
+{
+  "manifest": {
+    "dataset": "nutrition-agent-v2",
+    "scorer": "2.1.0",
+    "retrieval": "exact-metadata-units-v1",
+    "retrievalComparison": "Ablation of vector-only and hybrid selection under identical metadata and unit filters; not a fixed legacy baseline",
+    "versions": {
+      "api/_lib/assistant.ts": "301b3ad800fabfc5ae07abb9d76644c8f5cb0585fbf4001e4294cc866aaa7e7c",
+      "api/_lib/contracts.ts": "19c3519714d53cbd89471b43280b52b4a540d457551ea1ecc329d30debbfd0b7",
+      "api/_lib/retrieval.ts": "21cf243f94c7e92a9e114eb02464431ca6ede8c31f39929d9dc0a967b8964fe4",
+      "api/_lib/model-request.ts": "71c4099a643a9ab5b21fb9bf525c3fc17610a85fabd5a85936a93607c106da51",
+      "scripts/foods.json": "8cd089b245d107e106d4f0bd5d9ee73658bad89fff3d8eb21d9f84093faac664",
+      "evals/run.ts": "18e249ae30f6017e046310065ddb461797564b084ff613c918ff643b8c4d7d7a",
+      "evals/failure.ts": "6c5dbf8f9e00e216c951c8570692e7d0db81f1377693a18a7ee7122c81f845a7",
+      "evals/dataset.ts": "8ce06b0c71a4e7ee42bb0df538865da27f94dc86a68c6f9d19f2c9efc94c1abe",
+      "evals/scoring.ts": "920cb0a65e071e5c65f586efee95c209d40cc2d9ae980209a7cc83aadbe9c966",
+      "evals/harness.ts": "d02b77987ae6ef93b345d295d5ad4feaefef377db7d0664f7153e69257119247",
+      "evals/holdout.ts": "44c7c9827e90125f6b28cbadf78b2ee028d93ceaf8cb1f38b875272a4fae6f16",
+      "evals/holdout.lock.json": "d8c4fbb65a21218675a4a4dc5301da0578601d71ea23848d1a52a8a0d8f6a1c8"
+    },
+    "commit": "da9f9d49f8bdda155f2dff969fa8b61308d3dc24",
+    "dirty": true,
+    "configs": [
+      {
+        "id": "google-lite",
+        "provider": "google",
+        "model": "gemini-3.5-flash-lite",
+        "pricing": {
+          "inputPerMillion": 0.3,
+          "outputPerMillion": 2.5,
+          "verifiedOn": "2026-09-19"
+        }
+      },
+      {
+        "id": "google-app",
+        "provider": "google",
+        "model": "gemini-3.6-flash",
+        "pricing": {
+          "inputPerMillion": 0.75,
+          "outputPerMillion": 3.75,
+          "verifiedOn": "2026-09-19"
+        }
+      },
+      {
+        "id": "google-new",
+        "provider": "google",
+        "model": "gemini-3.8-flash",
+        "pricing": {
+          "inputPerMillion": 0.75,
+          "outputPerMillion": 3.75,
+          "verifiedOn": "2026-09-19"
+        }
+      }
+    ],
+    "suite": "tools",
+    "maxCases": 36,
+    "maxUsd": 0.5,
+    "allowPartial": false,
+    "startedAt": "2026-09-21T13:57:46.985Z",
+    "mode": "live",
+    "catalog": {
+      "source": "none",
+      "rows": null,
+      "fingerprint": null
+    },
+    "toolRetrieval": "none",
+    "retrievalSet": {
+      "name": "dev",
+      "version": "nutrition-agent-v2",
+      "cases": 20,
+      "fingerprint": "dfb43d5494a84e2e1c4d95159f6304f4727313c32c05c18fecee6050de6baa17"
+    },
+    "preflight": [],
+    "plan": [
+      {
+        "suite": "tools",
+        "config": "google-lite",
+        "cases": 12,
+        "caseLimit": 12,
+        "usdLimit": 0.16666666666666666
+      },
+      {
+        "suite": "tools",
+        "config": "google-app",
+        "cases": 12,
+        "caseLimit": 12,
+        "usdLimit": 0.16666666666666666
+      },
+      {
+        "suite": "tools",
+        "config": "google-new",
+        "cases": 12,
+        "caseLimit": 12,
+        "usdLimit": 0.16666666666666666
+      }
+    ]
+  },
+  "summary": {
+    "total": 36,
+    "passed": 1,
+    "failed": 0,
+    "inconclusive": 35,
+    "passRate": 1,
+    "incorrectMatches": 0,
+    "abstentions": 0,
+    "inconclusiveReasons": {
+      "configuration": 0,
+      "budget": 32,
+      "infrastructure": 3
+    },
+    "status": "inconclusive",
+    "estimatedUsd": null
+  },
+  "groups": [
+    {
+      "group": "tools/google-lite",
+      "total": 12,
+      "passed": 0,
+      "failed": 0,
+      "inconclusive": 12,
+      "passRate": null,
+      "incorrectMatches": 0,
+      "abstentions": 0,
+      "inconclusiveReasons": {
+        "configuration": 0,
+        "budget": 11,
+        "infrastructure": 1
+      },
+      "status": "inconclusive",
+      "estimatedUsd": null
+    },
+    {
+      "group": "tools/google-app",
+      "total": 12,
+      "passed": 0,
+      "failed": 0,
+      "inconclusive": 12,
+      "passRate": null,
+      "incorrectMatches": 0,
+      "abstentions": 0,
+      "inconclusiveReasons": {
+        "configuration": 0,
+        "budget": 11,
+        "infrastructure": 1
+      },
+      "status": "inconclusive",
+      "estimatedUsd": null
+    },
+    {
+      "group": "tools/google-new",
+      "total": 12,
+      "passed": 1,
+      "failed": 0,
+      "inconclusive": 11,
+      "passRate": 1,
+      "incorrectMatches": 0,
+      "abstentions": 0,
+      "inconclusiveReasons": {
+        "configuration": 0,
+        "budget": 10,
+        "infrastructure": 1
+      },
+      "status": "inconclusive",
+      "estimatedUsd": null
+    }
+  ],
+  "coverage": [
+    {
+      "group": "tools/google-lite",
+      "required": 12,
+      "scored": 0,
+      "complete": false,
+      "caseLimit": 12,
+      "usdLimit": 0.16666666666666666,
+      "calls": 1,
+      "spent": 0,
+      "unknownSpend": true
+    },
+    {
+      "group": "tools/google-app",
+      "required": 12,
+      "scored": 0,
+      "complete": false,
+      "caseLimit": 12,
+      "usdLimit": 0.16666666666666666,
+      "calls": 1,
+      "spent": 0,
+      "unknownSpend": true
+    },
+    {
+      "group": "tools/google-new",
+      "required": 12,
+      "scored": 1,
+      "complete": false,
+      "caseLimit": 12,
+      "usdLimit": 0.16666666666666666,
+      "calls": 2,
+      "spent": 0.00408825,
+      "unknownSpend": true
+    }
+  ],
+  "rows": [
+    {
+      "id": "a01",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "infrastructure",
+      "detail": "Case deadline exceeded or request aborted",
+      "latencyMs": 60031
+    },
+    {
+      "id": "a02",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a03",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a04",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a05",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a06",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a07",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a08",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a09",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a10",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a11",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a12",
+      "suite": "tools",
+      "config": "google-lite",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a01",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "infrastructure",
+      "detail": "Provider failure: AI_UNAVAILABLE (HTTP 503)",
+      "latencyMs": 342
+    },
+    {
+      "id": "a02",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a03",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a04",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a05",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a06",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a07",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a08",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a09",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a10",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a11",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a12",
+      "suite": "tools",
+      "config": "google-app",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a01",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "pass",
+      "detail": "Matched expected actions",
+      "latencyMs": 11410,
+      "inputTokens": 2326,
+      "outputTokens": 625,
+      "estimatedUsd": 0.00408825,
+      "toolCorrect": true,
+      "argumentsCorrect": true
+    },
+    {
+      "id": "a02",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "infrastructure",
+      "detail": "Provider failure: AI_UNAVAILABLE (HTTP 503)",
+      "latencyMs": 20468
+    },
+    {
+      "id": "a03",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a04",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a05",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a06",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a07",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a08",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a09",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a10",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a11",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    },
+    {
+      "id": "a12",
+      "suite": "tools",
+      "config": "google-new",
+      "status": "inconclusive",
+      "reason": "budget",
+      "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted",
+      "latencyMs": 0
+    }
+  ],
+  "budgetNote": "Each group has its own proportional allowance. Observed-cost stopping can exceed a group allowance by the final bounded request; embedding spend is a reserved ceiling. No retries. Unknown spend stops that group."
+}

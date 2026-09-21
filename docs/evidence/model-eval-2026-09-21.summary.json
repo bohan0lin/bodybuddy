@@ -1,0 +1,303 @@
+{
+  "startedAt": "2026-09-21T13:57:46.985Z",
+  "commit": "da9f9d49f8bdda155f2dff969fa8b61308d3dc24",
+  "configs": [
+    {
+      "id": "google-lite",
+      "provider": "google",
+      "model": "gemini-3.5-flash-lite",
+      "pricing": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 2.5,
+        "verifiedOn": "2026-09-19"
+      }
+    },
+    {
+      "id": "google-app",
+      "provider": "google",
+      "model": "gemini-3.6-flash",
+      "pricing": {
+        "inputPerMillion": 0.75,
+        "outputPerMillion": 3.75,
+        "verifiedOn": "2026-09-19"
+      }
+    },
+    {
+      "id": "google-new",
+      "provider": "google",
+      "model": "gemini-3.8-flash",
+      "pricing": {
+        "inputPerMillion": 0.75,
+        "outputPerMillion": 3.75,
+        "verifiedOn": "2026-09-19"
+      }
+    }
+  ],
+  "mode": "live",
+  "complete": false,
+  "toolRetrieval": "none",
+  "groups": [
+    {
+      "group": "tools/google-lite",
+      "complete": false,
+      "required": 12,
+      "scored": 0,
+      "passed": 0,
+      "toolCorrect": 0,
+      "argumentsCorrect": 0,
+      "p50Ms": null,
+      "p95Ms": null,
+      "knownCostUsd": 0,
+      "costComplete": false,
+      "failures": [
+        {
+          "id": "a01",
+          "status": "inconclusive",
+          "reason": "infrastructure",
+          "detail": "Case deadline exceeded or request aborted"
+        },
+        {
+          "id": "a02",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a03",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a04",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a05",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a06",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a07",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a08",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a09",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a10",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a11",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a12",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        }
+      ]
+    },
+    {
+      "group": "tools/google-app",
+      "complete": false,
+      "required": 12,
+      "scored": 0,
+      "passed": 0,
+      "toolCorrect": 0,
+      "argumentsCorrect": 0,
+      "p50Ms": null,
+      "p95Ms": null,
+      "knownCostUsd": 0,
+      "costComplete": false,
+      "failures": [
+        {
+          "id": "a01",
+          "status": "inconclusive",
+          "reason": "infrastructure",
+          "detail": "Provider failure: AI_UNAVAILABLE (HTTP 503)"
+        },
+        {
+          "id": "a02",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a03",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a04",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a05",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a06",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a07",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a08",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a09",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a10",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a11",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a12",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        }
+      ]
+    },
+    {
+      "group": "tools/google-new",
+      "complete": false,
+      "required": 12,
+      "scored": 1,
+      "passed": 1,
+      "toolCorrect": 1,
+      "argumentsCorrect": 1,
+      "p50Ms": 11410,
+      "p95Ms": 11410,
+      "knownCostUsd": 0.00408825,
+      "costComplete": false,
+      "failures": [
+        {
+          "id": "a02",
+          "status": "inconclusive",
+          "reason": "infrastructure",
+          "detail": "Provider failure: AI_UNAVAILABLE (HTTP 503)"
+        },
+        {
+          "id": "a03",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a04",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a05",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a06",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a07",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a08",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a09",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a10",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a11",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        },
+        {
+          "id": "a12",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Stopped because a previous request has unknown cost; allowance was not necessarily exhausted"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Small synthetic tool-policy dataset; no image, dialogue-quality or human timing claims.",
+    "Tool lookups with source none return no match. This is not a retrieval-quality benchmark.",
+    "Latency percentiles describe scored cases only; unavailable and skipped cases remain listed.",
+    "Known cost is estimated from reported tokens, not a bill; missing usage is not zero cost.",
+    "Incomplete runs do not support a model ranking. Preserve all attempts rather than selecting successful cases."
+  ]
+}

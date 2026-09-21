@@ -2,6 +2,12 @@
 
 Updated: 2026-09-15
 
+2026-09-21 update: see [Evaluation status](EVALUATION_STATUS.md) for the 69-food
+catalog audit and two real three-model attempts. Both attempts are inconclusive
+due to provider failures and unknown-cost safety stops. Docker startup failure
+blocks local retrieval evaluation. Keyboard-gap work is paused at the user's
+request. Older completion statements below remain historical, not new evidence.
+
 For the current code audit, Git status snapshot, and revised engineering priorities,
 see [Technical improvement plan](./TECHNICAL_IMPROVEMENT_PLAN.md). The verification
 results below remain historical results for the specified commit, not a new run.

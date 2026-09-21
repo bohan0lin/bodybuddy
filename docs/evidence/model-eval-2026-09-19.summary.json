@@ -1,0 +1,231 @@
+{
+  "startedAt": "2026-09-19T18:05:09.235Z",
+  "commit": "da9f9d49f8bdda155f2dff969fa8b61308d3dc24",
+  "configs": [
+    {
+      "id": "google-lite",
+      "provider": "google",
+      "model": "gemini-3.5-flash-lite",
+      "pricing": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 2.5,
+        "verifiedOn": "2026-09-19"
+      }
+    },
+    {
+      "id": "google-app",
+      "provider": "google",
+      "model": "gemini-3.6-flash",
+      "pricing": {
+        "inputPerMillion": 0.75,
+        "outputPerMillion": 3.75,
+        "verifiedOn": "2026-09-19"
+      }
+    },
+    {
+      "id": "google-new",
+      "provider": "google",
+      "model": "gemini-3.8-flash",
+      "pricing": {
+        "inputPerMillion": 0.75,
+        "outputPerMillion": 3.75,
+        "verifiedOn": "2026-09-19"
+      }
+    }
+  ],
+  "mode": "live",
+  "complete": false,
+  "toolRetrieval": "none",
+  "groups": [
+    {
+      "group": "tools/google-lite",
+      "complete": false,
+      "required": 12,
+      "scored": 10,
+      "passed": 10,
+      "toolCorrect": 10,
+      "argumentsCorrect": 10,
+      "p50Ms": 1230,
+      "p95Ms": 1713,
+      "knownCostUsd": 0.0067313,
+      "costComplete": false,
+      "failures": [
+        {
+          "id": "a11",
+          "status": "inconclusive",
+          "reason": "infrastructure",
+          "detail": "Provider unavailable, timed out, or returned an invalid result"
+        },
+        {
+          "id": "a12",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        }
+      ]
+    },
+    {
+      "group": "tools/google-app",
+      "complete": false,
+      "required": 12,
+      "scored": 3,
+      "passed": 3,
+      "toolCorrect": 3,
+      "argumentsCorrect": 3,
+      "p50Ms": 4895,
+      "p95Ms": 5571,
+      "knownCostUsd": 0.012987,
+      "costComplete": false,
+      "failures": [
+        {
+          "id": "a04",
+          "status": "inconclusive",
+          "reason": "infrastructure",
+          "detail": "Provider unavailable, timed out, or returned an invalid result"
+        },
+        {
+          "id": "a05",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a06",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a07",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a08",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a09",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a10",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a11",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a12",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        }
+      ]
+    },
+    {
+      "group": "tools/google-new",
+      "complete": false,
+      "required": 12,
+      "scored": 0,
+      "passed": 0,
+      "toolCorrect": 0,
+      "argumentsCorrect": 0,
+      "p50Ms": null,
+      "p95Ms": null,
+      "knownCostUsd": 0,
+      "costComplete": false,
+      "failures": [
+        {
+          "id": "a01",
+          "status": "inconclusive",
+          "reason": "infrastructure",
+          "detail": "Provider unavailable, timed out, or returned an invalid result"
+        },
+        {
+          "id": "a02",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a03",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a04",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a05",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a06",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a07",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a08",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a09",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a10",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a11",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        },
+        {
+          "id": "a12",
+          "status": "inconclusive",
+          "reason": "budget",
+          "detail": "Group case or spending allowance exhausted"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Small synthetic tool-policy dataset; no image, dialogue-quality or human timing claims.",
+    "Tool lookups with source none return no match. This is not a retrieval-quality benchmark.",
+    "Latency percentiles describe scored cases only; unavailable and skipped cases remain listed.",
+    "Known cost is estimated from reported tokens, not a bill; missing usage is not zero cost.",
+    "Incomplete runs do not support a model ranking. Preserve all attempts rather than selecting successful cases."
+  ]
+}
