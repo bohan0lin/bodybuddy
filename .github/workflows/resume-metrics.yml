@@ -1,0 +1,40 @@
+name: Resume concurrency evidence
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/agent-proposals-evaluations]
+    paths:
+      - scripts/db/resume-metrics.mjs
+      - .github/workflows/resume-metrics.yml
+permissions:
+  contents: read
+concurrency:
+  group: resume-concurrency-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run db:start
+      - run: npm run db:reset
+      - run: node scripts/db/resume-metrics.mjs
+      - name: Retain evidence and generated schema types
+        if: always()
+        run: |
+          mkdir -p evals/results
+          npx supabase gen types typescript --local --schema public > evals/results/database.types.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: concurrency-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evals/results/
+          retention-days: 30
+      - run: npm run db:stop
+        if: always()
