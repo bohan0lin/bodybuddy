@@ -124,7 +124,7 @@ function AppContent() {
   if (!session) return <Login />
 
   return (
-    <StoreProvider userId={session.user.id}>
+    <StoreProvider key={session.user.id} userId={session.user.id}>
       <AuthedApp />
     </StoreProvider>
   )

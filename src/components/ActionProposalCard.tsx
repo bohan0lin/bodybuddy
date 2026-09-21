@@ -2,12 +2,14 @@ import { useRef, useState } from 'react'
 import { proposalSchema, type ActionProposal } from '../../api/_lib/contracts'
 import { confirmProposal, ProposalConflict } from '../lib/confirmProposal'
 import { useT } from '../lib/i18n'
+import type { ProposalState } from '../lib/coachHistory'
 
-export default function ActionProposalCard({ proposal, onSaved }: { proposal: ActionProposal; onSaved: () => void }) {
+export default function ActionProposalCard({ proposal, onSaved, persistence }: { proposal: ActionProposal; onSaved: () => void; persistence?: { state: ProposalState; transition: (operation: 'edit' | 'cancel' | 'confirm', proposal: ActionProposal) => Promise<ProposalState> } }) {
   const { t } = useT()
   const [draft, setDraft] = useState(proposal)
-  const [status, setStatus] = useState<'review' | 'saving' | 'saved' | 'cancelled' | 'error' | 'conflict'>('review')
+  const [status, setStatus] = useState<'review' | 'saving' | 'saved' | 'cancelled' | 'error' | 'conflict'>(() => persistence?.state.status === 'confirmed' ? 'saved' : persistence?.state.status === 'cancelled' ? 'cancelled' : persistence && Date.parse(persistence.state.expiresAt) <= Date.now() ? 'conflict' : 'review')
   const submitted = useRef<ActionProposal | null>(null)
+  const submittedOperation = useRef<'edit' | 'cancel' | 'confirm'>('confirm')
   const busy = useRef(false)
   const a = draft.action
   const locked = status !== 'review'
@@ -16,20 +18,25 @@ export default function ActionProposalCard({ proposal, onSaved }: { proposal: Ac
   function edit(key: string, value: string | number) {
     setDraft((current) => ({ ...current, action: { ...current.action, [key]: value } }))
   }
-  async function save() {
-    if (busy.current || !valid || !['review', 'error'].includes(status)) return
+  async function save(operation: 'edit' | 'cancel' | 'confirm' = 'confirm') {
+    if (submitted.current) operation = submittedOperation.current
+    if (busy.current || (operation !== 'cancel' && !valid) || !['review', 'error'].includes(status)) return
+    if (!submitted.current) submittedOperation.current = operation
+    operation = submittedOperation.current
     // Freeze the confirmed payload across uncertain network outcomes; never retry edited content.
-    submitted.current ??= proposalSchema.parse(draft)
+    submitted.current ??= proposalSchema.parse(operation === 'cancel' ? proposal : draft)
     busy.current = true
     setStatus('saving')
     try {
-      await confirmProposal(submitted.current)
+      if (persistence) await persistence.transition(operation, submitted.current)
+      else await confirmProposal(submitted.current)
     } catch (error) {
       setStatus(error instanceof ProposalConflict ? 'conflict' : 'error')
       return
     } finally { busy.current = false }
-    setStatus('saved')
-    onSaved()
+    setStatus(operation === 'cancel' ? 'cancelled' : operation === 'edit' ? 'review' : 'saved')
+    submitted.current = null
+    if (operation === 'confirm') onSaved()
   }
   const numeric = (key: string, label: string, value: number | undefined, optional = false) => (
     <label className="field" key={key}>
@@ -68,9 +75,10 @@ export default function ActionProposalCard({ proposal, onSaved }: { proposal: Ac
         {numeric('calories', t('proposal.calories'), a.calories)}
       </fieldset>
       {status === 'review' && !valid && <p role="alert">{t('proposal.invalid')}</p>}
-      {(status === 'error' || status === 'conflict') && <p role="alert">{t(`proposal.${status}`)}</p>}
+      {persistence && status === 'review' && JSON.stringify(draft) !== JSON.stringify(proposal) && <p role="status">{t('proposal.unsavedDraft')}</p>}
+      {(status === 'error' || status === 'conflict') && <p role="alert">{t(status === 'conflict' && persistence ? 'proposal.historyConflict' : `proposal.${status}`)}</p>}
       {['saved','cancelled','saving'].includes(status) && <p role="status">{t(`proposal.${status}`)}</p>}
-      {status === 'review' && <div className="row"><button className="btn" onClick={() => setStatus('cancelled')}>{t('proposal.cancel')}</button><button className="btn btn-accent" disabled={!valid} onClick={() => void save()}>{t('proposal.confirm')}</button></div>}
+      {status === 'review' && <div className="row"><button className="btn" onClick={() => persistence ? void save('cancel') : setStatus('cancelled')}>{t('proposal.cancel')}</button>{persistence && <button className="btn" disabled={!valid || JSON.stringify(draft) === JSON.stringify(proposal)} onClick={() => void save('edit')}>{t('proposal.saveDraft')}</button>}<button className="btn btn-accent" disabled={!valid} onClick={() => void save()}>{t('proposal.confirm')}</button></div>}
       {status === 'error' && <button className="btn btn-block" onClick={() => void save()}>{t('common.retry')}</button>}
     </section>
   )

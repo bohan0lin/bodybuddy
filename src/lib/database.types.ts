@@ -33,6 +33,82 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_messages: {
+        Row: {
+          body: Json
+          created_at: string
+          id: string
+          reply_to: string | null
+          role: string
+          sequence: number
+          user_id: string
+        }
+        Insert: {
+          body: Json
+          created_at?: string
+          id: string
+          reply_to?: string | null
+          role: string
+          sequence?: never
+          user_id: string
+        }
+        Update: {
+          body?: Json
+          created_at?: string
+          id?: string
+          reply_to?: string | null
+          role?: string
+          sequence?: never
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_messages_user_id_reply_to_fkey"
+            columns: ["user_id", "reply_to"]
+            isOneToOne: true
+            referencedRelation: "coach_messages"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
+      coach_proposals: {
+        Row: {
+          action_id: string
+          expires_at: string
+          message_id: string
+          payload: Json
+          status: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          action_id: string
+          expires_at?: string
+          message_id: string
+          payload: Json
+          status?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          action_id?: string
+          expires_at?: string
+          message_id?: string
+          payload?: Json
+          status?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_proposals_user_id_message_id_fkey"
+            columns: ["user_id", "message_id"]
+            isOneToOne: false
+            referencedRelation: "coach_messages"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
       foods: {
         Row: {
           aliases: string | null
@@ -317,7 +393,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_coach_message: {
+        Args: {
+          p_body: Json
+          p_id: string
+          p_owner: string
+          p_proposals?: Json
+          p_reply_to?: string
+          p_role: string
+        }
+        Returns: undefined
+      }
       confirm_agent_action: {
+        Args: { p_action_id: string; p_payload: Json }
+        Returns: Json
+      }
+      execute_agent_action: {
         Args: { p_action_id: string; p_payload: Json }
         Returns: Json
       }
@@ -388,6 +479,16 @@ export type Database = {
           p_image?: boolean
           p_ip_hash: string
           p_user_id: string
+        }
+        Returns: Json
+      }
+      transition_coach_proposal: {
+        Args: {
+          p_action_id: string
+          p_operation: string
+          p_owner: string
+          p_payload: Json
+          p_version: number
         }
         Returns: Json
       }

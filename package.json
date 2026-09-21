@@ -10,6 +10,7 @@
     "typecheck": "tsc -b && node scripts/check-api-build.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:history-db": "node --test scripts/db/coach-history.test.mjs",
     "test:e2e": "node scripts/e2e/run.mjs",
     "db:start": "supabase start -x realtime,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor",
     "db:stop": "supabase stop",
@@ -37,6 +38,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "^1.63.0",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^24.13.3",

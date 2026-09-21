@@ -7,9 +7,10 @@ import { fileToResizedBase64 } from '../lib/image'
 import { useT } from '../lib/i18n'
 import { createVoiceController, type VoiceState } from '../lib/voice'
 import AppIcon from '../components/AppIcon'
-import type { ActionProposal } from '../../api/_lib/contracts'
 import { responses } from '../../api/_lib/contracts'
 import ActionProposalCard from '../components/ActionProposalCard'
+import { useAuth } from '../data/auth'
+import { appendCoachMessage, coachHistoryEnabled, loadCoachHistory, transitionCoachProposal, type CoachMessage } from '../lib/coachHistory'
 
 // 浏览器语音识别（Web Speech API）特性检测；不支持则退回文本输入
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -18,18 +19,23 @@ function getSpeechRecognition(): any {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-interface Msg {
-  role: 'user' | 'assistant'
-  text: string
-  image?: string
-  actions?: ActionProposal[]
-}
+type Msg = CoachMessage
 
 // AI 教练：整屏对话页（原悬浮助手改造而来）
 export default function Coach() {
   const { refreshRecords } = useStore()
   const [refreshError, setRefreshError] = useState(false)
   const { t, lang } = useT()
+  const { session } = useAuth()
+  const owner = session!.user.id
+  const [historyLoading, setHistoryLoading] = useState(coachHistoryEnabled)
+  const [historyError, setHistoryError] = useState(false)
+  const [persistError, setPersistError] = useState(false)
+  const [requestError, setRequestError] = useState('')
+  const pendingMessage = useRef<Msg | null>(null)
+  const requestController = useRef<AbortController | null>(null)
+  const sending = useRef(false)
+  const [thumbnail, setThumbnail] = useState<string | null>(null)
 
 
   const location = useLocation()
@@ -45,6 +51,37 @@ export default function Coach() {
   const fileRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!coachHistoryEnabled) return
+    const controller = new AbortController()
+    loadCoachHistory(owner, controller.signal).then(history => {
+      if (!controller.signal.aborted) { setMessages(history); setHistoryLoading(false) }
+    }).catch(() => {
+      if (!controller.signal.aborted) { setHistoryError(true); setHistoryLoading(false) }
+    })
+    return () => { controller.abort(); requestController.current?.abort() }
+  }, [owner])
+
+  async function restoreHistory() {
+    if (sending.current) return
+    setHistoryLoading(true)
+    try { setMessages(await loadCoachHistory(owner)); setHistoryError(false) }
+    catch { setHistoryError(true) }
+    finally { setHistoryLoading(false) }
+  }
+
+  async function retryPersistence() {
+    if (sending.current || !pendingMessage.current) return
+    sending.current = true
+    setLoading(true)
+    try {
+      await appendCoachMessage(owner, pendingMessage.current)
+      setMessages(await loadCoachHistory(owner))
+      pendingMessage.current = null
+      setPersistError(false)
+    } catch { setPersistError(true) }
+    finally { sending.current = false; setLoading(false) }
+  }
   const voice = useMemo(() => createVoiceController(setVoiceState, (transcript) => {
     const prefix = voiceMeal ? t('coach.voiceMealPrefix') : ''
     setInput((prev) => prev ? prev + ' ' + transcript : prefix + transcript)
@@ -91,29 +128,55 @@ export default function Coach() {
     e.target.value = ''
     if (!file) return
     const { data, mediaType } = await fileToResizedBase64(file)
+    if (coachHistoryEnabled) {
+      const small = await fileToResizedBase64(file, 320)
+      setThumbnail(`data:${small.mediaType};base64,${small.data}`)
+    }
     setImage(`data:${mediaType};base64,${data}`)
   }
 
-  async function send(preset?: string) {
+  async function send(preset?: string, retryMessage?: Msg) {
     const text = (preset ?? input).trim()
-    if ((!text && !image) || loading) return
-    const userMsg: Msg = { role: 'user', text: text || (lang === 'zh' ? '这张图' : 'this photo'), image: image ?? undefined }
-    const history = [...messages, userMsg]
+    if ((!text && !image && !retryMessage) || sending.current || historyLoading || historyError || persistError) return
+    sending.current = true
+    const userMsg: Msg = retryMessage ?? { id: crypto.randomUUID(), role: 'user', text: text || (lang === 'zh' ? '这张图' : 'this photo'), image: image ?? undefined }
+    const history = retryMessage ? messages : [...messages, userMsg]
     setMessages(history)
     setInput('')
     setImage(null)
     setLoading(true)
+    setRequestError('')
     scrollDown()
+    const controller = new AbortController()
+    requestController.current = controller
     try {
+      if (coachHistoryEnabled) {
+        const durable = { ...userMsg, image: userMsg.image ? thumbnail ?? userMsg.image : undefined }
+        pendingMessage.current = durable
+        await appendCoachMessage(owner, durable)
+        pendingMessage.current = null
+      }
       const recent = history.slice(-39)
-      const payloadMsgs = recent.map((m, i) => ({ role: m.role, text: m.text, image: i === recent.length - 1 ? m.image : undefined }))
-      const res = responses.assistant.parse(await postJson<unknown>('/api/assistant', { messages: payloadMsgs, date: todayStr(), hour: new Date().getHours(), lang }))
-      setMessages((ms) => [...ms, { role: 'assistant', text: res.reply, actions: res.actions }])
+      const payloadMsgs = recent.map((m, i) => ({ role: m.role,
+        text: m.states?.length ? `${m.text.slice(0, 6000)}\nProposal states: ${JSON.stringify(m.states.map(state => ({ actionId: state.proposal.actionId, status: state.status, version: state.version })))}` : m.text,
+        image: i === recent.length - 1 ? m.image : undefined }))
+      const res = responses.assistant.parse(await postJson<unknown>('/api/assistant', { messages: payloadMsgs, date: todayStr(), hour: new Date().getHours(), lang }, controller.signal))
+      const reply: Msg = { id: crypto.randomUUID(), role: 'assistant', text: res.reply, actions: res.actions, replyTo: userMsg.id }
+      if (coachHistoryEnabled) {
+        pendingMessage.current = reply
+        await appendCoachMessage(owner, reply)
+        const restored = await loadCoachHistory(owner, controller.signal)
+        pendingMessage.current = null
+        if (!controller.signal.aborted) setMessages(restored)
+      } else setMessages((ms) => [...ms, reply])
     } catch (e) {
+      if (controller.signal.aborted) return
+      if (pendingMessage.current) { setPersistError(true); return }
       const busy = e instanceof ApiRequestError && (e.status === 503 || e.status === 429)
       const reference = e instanceof ApiRequestError && e.requestId ? `\n\n[${e.code} · ${e.requestId}]` : ''
-      setMessages((ms) => [...ms, { role: 'assistant', text: (busy ? t('assistant.busy') : t('assistant.failed')) + reference }])
+      setRequestError((busy ? t('assistant.busy') : t('assistant.failed')) + reference)
     } finally {
+      sending.current = false
       setLoading(false)
       scrollDown()
     }
@@ -132,6 +195,12 @@ export default function Coach() {
 
       {/* messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '18px 16px' }}>
+        {coachHistoryEnabled && <p className="muted" style={{ fontSize: 12 }}>{t('coach.historyNotice')}</p>}
+        {historyLoading && <p role="status">{t('coach.historyLoading')}</p>}
+        {historyError && <p role="alert">{t('coach.historyError')} <button className="btn" onClick={() => void restoreHistory()}>{t('common.retry')}</button></p>}
+        {persistError && <p role="alert">{t('coach.persistError')} <button className="btn" disabled={loading} onClick={() => void retryPersistence()}>{t('common.retry')}</button></p>}
+        {requestError && <p role="alert">{requestError}</p>}
+        {coachHistoryEnabled && !loading && !historyLoading && !persistError && messages.at(-1)?.role === 'user' && <p>{t('coach.interrupted')} {!messages.at(-1)?.image && <button className="btn" onClick={() => void send(undefined, messages.at(-1))}>{t('common.retry')}</button>}</p>}
         {messages.length === 0 && (
           <div style={{ padding: '20px 6px' }}>
             <p className="muted" style={{ fontSize: 14, lineHeight: 1.7, textAlign: 'center', margin: '0 0 20px' }}>{t('assistant.greeting')}</p>
@@ -149,15 +218,26 @@ export default function Coach() {
             </div>
           </div>
         )}
-        {messages.map((m, mi) => (
-          <div key={mi} style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+        {messages.map((m) => (
+          <div key={m.id} style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
             {m.image && <img src={m.image} alt="" style={{ maxWidth: 160, borderRadius: 12, marginBottom: 6 }} />}
             {m.text && (
               <div style={{ maxWidth: '85%', padding: '10px 14px', borderRadius: 14, fontSize: 14.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', background: m.role === 'user' ? 'var(--surface-2)' : 'var(--surface)', border: '1px solid var(--line)', color: m.role === 'user' ? 'var(--text)' : 'var(--text-dim)' }}>
                 {m.text}
               </div>
             )}
-            {m.actions?.map((proposal) => <ActionProposalCard key={proposal.actionId} proposal={proposal} onSaved={() => { void refreshRecords().catch(() => setRefreshError(true)) }} />)}
+            {m.actions?.map((proposal) => {
+              const state = m.states?.find(item => item.proposal.actionId === proposal.actionId)
+              return <ActionProposalCard key={`${proposal.actionId}:${state?.version ?? 0}`} proposal={proposal}
+                persistence={coachHistoryEnabled && state ? { state, transition: async (operation, draft) => {
+                  const next = await transitionCoachProposal(owner, state, operation, draft)
+                  setMessages(current => current.map(message => message.id !== m.id ? message : { ...message,
+                    actions: message.actions?.map(item => item.actionId === proposal.actionId ? next.proposal : item),
+                    states: message.states?.map(item => item.proposal.actionId === proposal.actionId ? next : item) }))
+                  return next
+                } } : undefined}
+                onSaved={() => { void refreshRecords().catch(() => setRefreshError(true)) }} />
+            })}
           </div>
         ))}
         {loading && <p className="muted" style={{ fontSize: 13 }}>{t('assistant.thinking')}</p>}
@@ -205,6 +285,7 @@ export default function Coach() {
           </button>
           <input
             ref={inputRef}
+            maxLength={8000}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send()}

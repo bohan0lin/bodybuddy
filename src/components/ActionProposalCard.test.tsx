@@ -61,3 +61,38 @@ it('prevents invalid numeric edits from being submitted', () => {
   fireEvent.change(screen.getByLabelText('proposal.calories'), { target: { value: '-1' } })
   expect((screen.getByText('proposal.confirm') as HTMLButtonElement).disabled).toBe(true)
 })
+
+it('restores terminal proposals without exposing confirmation controls', () => {
+  const transition = vi.fn()
+  render(<ActionProposalCard proposal={proposal} onSaved={vi.fn()} persistence={{ state: { proposal, version: 2, status: 'cancelled', expiresAt: '2099-01-01' }, transition }} />)
+  expect(screen.getByText('proposal.cancelled')).toBeTruthy()
+  expect(screen.queryByText('proposal.confirm')).toBeNull()
+  expect(transition).not.toHaveBeenCalled()
+})
+
+it('persists cancellation and retries an uncertain result with the same operation', async () => {
+  const state = { proposal, version: 1, status: 'pending' as const, expiresAt: '2099-01-01' }
+  const transition = vi.fn().mockRejectedValueOnce(new Error('timeout')).mockResolvedValue({ ...state, version: 2, status: 'cancelled' })
+  render(<ActionProposalCard proposal={proposal} onSaved={vi.fn()} persistence={{ state, transition }} />)
+  fireEvent.click(screen.getByText('proposal.cancel'))
+  await screen.findByText('proposal.error')
+  fireEvent.click(screen.getByText('common.retry'))
+  await screen.findByText('proposal.cancelled')
+  expect(transition.mock.calls[0]).toEqual(['cancel', proposal])
+  expect(transition.mock.calls[1]).toEqual(transition.mock.calls[0])
+  expect(mocks.confirm).not.toHaveBeenCalled()
+})
+
+it('saves an edited draft without recording a meal', async () => {
+  const state = { proposal, version: 1, status: 'pending' as const, expiresAt: '2099-01-01' }
+  const transition = vi.fn().mockResolvedValue({ ...state, version: 2 })
+  const onSaved = vi.fn()
+  render(<ActionProposalCard proposal={proposal} onSaved={onSaved} persistence={{ state, transition }} />)
+  fireEvent.change(screen.getByLabelText('proposal.calories'), { target: { value: '150' } })
+  expect(screen.getByText('proposal.unsavedDraft')).toBeTruthy()
+  fireEvent.click(screen.getByText('proposal.saveDraft'))
+  await screen.findByText('proposal.confirm')
+  expect(transition).toHaveBeenCalledWith('edit', { ...proposal, action: { ...proposal.action, calories: 150 } })
+  expect(onSaved).not.toHaveBeenCalled()
+  expect(mocks.confirm).not.toHaveBeenCalled()
+})
