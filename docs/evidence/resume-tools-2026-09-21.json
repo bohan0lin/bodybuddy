@@ -1,0 +1,1645 @@
+{
+  "manifest": {
+    "protocol": "resume-tools-v1",
+    "startedAt": "2026-09-21T19:13:59.155Z",
+    "mode": "live",
+    "config": {
+      "id": "google-lite",
+      "provider": "google",
+      "model": "gemini-3.5-flash-lite",
+      "pricing": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 2.5,
+        "verifiedOn": "2026-09-19"
+      }
+    },
+    "maxUsd": 0.5,
+    "maxCases": 150,
+    "repetitions": 3,
+    "scorer": "2.1.0",
+    "versions": {
+      "evals/resume-tools.ts": "1c51853385d4f45697e81d8b0b189b078f9f09bf840d97d4f03c12e3ba5af648",
+      "evals/resume-tools.lock.json": "8aa1c78f7db6c77cda6455f988ba471faf47047d2d873a74afb145a2857e5cdc",
+      "evals/resume-tools-run.ts": "5fed3ae0076296e0bbd4f1d80b19945e27328492a6a57ef5920e76d2ba95bf8b",
+      "evals/scoring.ts": "920cb0a65e071e5c65f586efee95c209d40cc2d9ae980209a7cc83aadbe9c966",
+      "evals/cases.ts": "84adfe63c62b1a4f052309a1fecce6a88d12f29acb7bab92e75b4274ebd83ab3",
+      "api/_lib/assistant.ts": "301b3ad800fabfc5ae07abb9d76644c8f5cb0585fbf4001e4294cc866aaa7e7c",
+      "api/_lib/contracts.ts": "19c3519714d53cbd89471b43280b52b4a540d457551ea1ecc329d30debbfd0b7",
+      "api/_lib/model-request.ts": "71c4099a643a9ab5b21fb9bf525c3fc17610a85fabd5a85936a93607c106da51"
+    },
+    "commit": "cd19b7491516ade65199158594ef476c588645c1",
+    "dirty": true,
+    "retrieval": "none; injected lookup always returns null",
+    "scheduling": "Sequential, fixed case order, three complete passes planned; no automatic retry",
+    "costBoundary": "Reported generation tokens at verified standard paid-tier prices; no embedding calls. Unknown usage stops execution. Last bounded request may exceed observed-spend allowance.",
+    "latencyBoundary": "Complete assistant tool loop, including failed/timeout attempts; excludes HTTP/browser/database. No warm-up; provider caching not controlled."
+  },
+  "summary": {
+    "status": "inconclusive",
+    "distinctScenarios": 50,
+    "repetitions": 3,
+    "plannedRuns": 150,
+    "attempted": 23,
+    "scored": 22,
+    "passed": 22,
+    "failed": 0,
+    "unscored": 128,
+    "toolCorrect": 22,
+    "argumentsCorrect": 22,
+    "casePassRate": 1,
+    "complete": false,
+    "knownEstimatedUsd": 0.0191036,
+    "costComplete": false,
+    "estimatedUsdPerSuccessfulTask": null,
+    "latencyMs": {
+      "p50": 1700.9409999999916,
+      "p95": 19705.932200000003,
+      "sample": 23,
+      "includesFailures": true
+    }
+  },
+  "rows": [
+    {
+      "id": "t01",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2042,
+      "outputTokens": 112,
+      "estimatedUsd": 0.0008926,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a log for your breakfast:\n- **Oats** (100 g): 389 kcal, 17 g protein, 66 g carbs, 7 g fat (estimates)\n\nWould you like me to save this?",
+        "actions": [
+          {
+            "actionId": "9e22a434-8e1b-485b-abe6-9bd52383744e",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "oats",
+              "amount": 100,
+              "unit": "g",
+              "mealType": "breakfast",
+              "protein": 17,
+              "carbs": 66,
+              "fat": 7,
+              "calories": 389
+            }
+          }
+        ]
+      },
+      "latencyMs": 9603.2914
+    },
+    {
+      "id": "t02",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2059,
+      "outputTokens": 141,
+      "estimatedUsd": 0.0009702,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "我为你准备好了记录：\n- **餐别**：午餐\n- **食物**：米饭 (200 g)\n- **营养估算**：热量 260 千卡 | 蛋白质 5.4 克 | 碳水化合物 56 克 | 脂肪 0.6 克\n\n请问确认要记录这顿午餐吗？",
+        "actions": [
+          {
+            "actionId": "d0972112-7d3a-4712-931d-0aad2beaf7da",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "米饭",
+              "amount": 200,
+              "unit": "g",
+              "mealType": "lunch",
+              "protein": 5.4,
+              "carbs": 56,
+              "fat": 0.6,
+              "calories": 260
+            }
+          }
+        ]
+      },
+      "latencyMs": 9736.0159
+    },
+    {
+      "id": "t03",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2059,
+      "outputTokens": 116,
+      "estimatedUsd": 0.0009076999999999999,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a log for your dinner of 150g of salmon (estimated at 312 kcal, 30g protein, 0g carbs, and 19.5g fat). \n\nWould you like me to save this to your log?",
+        "actions": [
+          {
+            "actionId": "fc4e7e00-2886-4aaa-8b82-1f9b970d7aab",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "salmon",
+              "amount": 150,
+              "unit": "g",
+              "mealType": "dinner",
+              "protein": 30,
+              "carbs": 0,
+              "fat": 19.5,
+              "calories": 312
+            }
+          }
+        ]
+      },
+      "latencyMs": 1445.1294000000016
+    },
+    {
+      "id": "t04",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2060,
+      "outputTokens": 127,
+      "estimatedUsd": 0.0009355,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "我为你拟好了这条加餐记录：\n* **加餐**：牛奶 250 ml（约 153 千卡，蛋白质 8.5 克、碳水 12 克、脂肪 8.25 克）\n\n请问确认要记录吗？确认后我会帮你保存。",
+        "actions": [
+          {
+            "actionId": "c62db693-1730-4732-9066-abc3528d052f",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "牛奶",
+              "amount": 250,
+              "unit": "ml",
+              "mealType": "snack",
+              "protein": 8.5,
+              "carbs": 12,
+              "fat": 8.25,
+              "calories": 153
+            }
+          }
+        ]
+      },
+      "latencyMs": 12499.992899999997
+    },
+    {
+      "id": "t05",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2059,
+      "outputTokens": 103,
+      "estimatedUsd": 0.0008751999999999999,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a log for 80 g of bread for breakfast (8 g protein, 36 g carbs, 3 g fat, 203 kcal - estimate). \n\nWould you like me to save this meal?",
+        "actions": [
+          {
+            "actionId": "bdcbef3c-b894-415e-a2f1-c6482760bbf7",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "bread",
+              "amount": 80,
+              "unit": "g",
+              "mealType": "breakfast",
+              "protein": 8,
+              "carbs": 36,
+              "fat": 3,
+              "calories": 203
+            }
+          }
+        ]
+      },
+      "latencyMs": 17569.2546
+    },
+    {
+      "id": "t06",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2059,
+      "outputTokens": 104,
+      "estimatedUsd": 0.0008776999999999999,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a log for 1 serving of your rice bowl (508 kcal, 35g protein, 65g carbs, 12g fat) for lunch. Would you like me to save this?",
+        "actions": [
+          {
+            "actionId": "b4c58be8-e23e-4926-8257-1b520a381ce6",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "rice bowl",
+              "amount": 1,
+              "unit": "serving",
+              "mealType": "lunch",
+              "protein": 35,
+              "carbs": 65,
+              "fat": 12,
+              "calories": 508
+            }
+          }
+        ]
+      },
+      "latencyMs": 1215.3061000000016
+    },
+    {
+      "id": "t07",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2064,
+      "outputTokens": 115,
+      "estimatedUsd": 0.0009067,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "好的！我为你拟好了晚餐的“沙拉”记录（约 300 克，含蛋白质 12 克、碳水 18 克、脂肪 9 克、201 千卡，估算值）。\n\n请确认是否要保存这条记录？",
+        "actions": [
+          {
+            "actionId": "ada64dd2-0e76-48f3-9a3b-65f56b923e9c",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "沙拉",
+              "amount": 300,
+              "unit": "g",
+              "mealType": "dinner",
+              "protein": 12,
+              "carbs": 18,
+              "fat": 9,
+              "calories": 201
+            }
+          }
+        ]
+      },
+      "latencyMs": 1569.3309000000008
+    },
+    {
+      "id": "t08",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2057,
+      "outputTokens": 115,
+      "estimatedUsd": 0.0009046,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a log for your 30 g snack of almonds (approx. 174 kcal, 6.3 g protein, 6.6 g carbs, 14.7 g fat). Would you like to confirm this entry?",
+        "actions": [
+          {
+            "actionId": "48fd0056-3a6d-4097-948f-df087b0cdd43",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "almonds",
+              "amount": 30,
+              "unit": "g",
+              "mealType": "snack",
+              "protein": 6.3,
+              "carbs": 6.6,
+              "fat": 14.7,
+              "calories": 174
+            }
+          }
+        ]
+      },
+      "latencyMs": 19705.932200000003
+    },
+    {
+      "id": "t09",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2052,
+      "outputTokens": 98,
+      "estimatedUsd": 0.0008606,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "我为你拟好了早餐记录（酸奶 100 克：10克蛋白、4克碳水、0克脂肪、56千卡，估算值）。请问确认记录吗？",
+        "actions": [
+          {
+            "actionId": "f8f651f2-8b47-42cc-94f9-ea42798d5e63",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "酸奶",
+              "amount": 100,
+              "unit": "g",
+              "mealType": "breakfast",
+              "protein": 10,
+              "carbs": 4,
+              "fat": 0,
+              "calories": 56
+            }
+          }
+        ]
+      },
+      "latencyMs": 10677.695899999992
+    },
+    {
+      "id": "t10",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2047,
+      "outputTokens": 101,
+      "estimatedUsd": 0.0008666,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I have prepared a log for **200 ml black coffee** as a snack (0 kcal, 0g protein, 0g carbs, 0g fat - estimated). \n\nWould you like me to save this?",
+        "actions": [
+          {
+            "actionId": "4271b49b-5d23-41ee-90df-009058e75b6a",
+            "date": "2026-09-21",
+            "action": {
+              "type": "log",
+              "name": "black coffee",
+              "amount": 200,
+              "unit": "ml",
+              "mealType": "snack",
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "calories": 0
+            }
+          }
+        ]
+      },
+      "latencyMs": 1595.3358000000007
+    },
+    {
+      "id": "t11",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2062,
+      "outputTokens": 110,
+      "estimatedUsd": 0.0008936,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a favorite for **Plain oats** (per 100 g: 389 kcal, 17 g protein, 66 g carbs, 7 g fat). \n\nWould you like to save this to your favorites?",
+        "actions": [
+          {
+            "actionId": "ef57f72c-420e-46fe-9f9d-7cdcaa1a8331",
+            "date": "2026-09-21",
+            "action": {
+              "type": "save",
+              "kind": "food",
+              "name": "Plain oats",
+              "unit": "g",
+              "baseAmount": 100,
+              "protein": 17,
+              "carbs": 66,
+              "fat": 7,
+              "calories": 389
+            }
+          }
+        ]
+      },
+      "latencyMs": 1406.4818000000087
+    },
+    {
+      "id": "t12",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2070,
+      "outputTokens": 115,
+      "estimatedUsd": 0.0009085,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "我已为你准备好将“牛奶”（每 100 ml：蛋白质 3.4g、碳水 4.8g、脂肪 3.3g、61千卡）保存到常用食物中。\n\n请问确认要保存吗？",
+        "actions": [
+          {
+            "actionId": "e2fe4e8c-11be-4296-9ab8-bbe93879f48c",
+            "date": "2026-09-21",
+            "action": {
+              "type": "save",
+              "kind": "food",
+              "name": "牛奶",
+              "unit": "ml",
+              "baseAmount": 100,
+              "protein": 3.4,
+              "carbs": 4.8,
+              "fat": 3.3,
+              "calories": 61
+            }
+          }
+        ]
+      },
+      "latencyMs": 24960.007599999997
+    },
+    {
+      "id": "t13",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2047,
+      "outputTokens": 109,
+      "estimatedUsd": 0.0008866,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "Would you like me to save **Lunch box** (1 serving: 40g protein, 70g carbs, 15g fat, 575 kcal) to your favorites? Let me know and I'll record it for you!",
+        "actions": [
+          {
+            "actionId": "53912769-786e-425b-8713-2ba167c118c7",
+            "date": "2026-09-21",
+            "action": {
+              "type": "save",
+              "kind": "meal",
+              "name": "Lunch box",
+              "unit": "serving",
+              "baseAmount": 1,
+              "protein": 40,
+              "carbs": 70,
+              "fat": 15,
+              "calories": 575
+            }
+          }
+        ]
+      },
+      "latencyMs": 1581.0580999999947
+    },
+    {
+      "id": "t14",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2058,
+      "outputTokens": 115,
+      "estimatedUsd": 0.0009048999999999999,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "好的！我已经为你准备好了把“鸡肉饭”（350克，含蛋白质35克、碳水60克、脂肪10克、470千卡）加入常用套餐的提议。\n\n确认要把它保存到常用里吗？",
+        "actions": [
+          {
+            "actionId": "7d2a4ca9-949a-4a63-98bd-4eb7ea778d37",
+            "date": "2026-09-21",
+            "action": {
+              "type": "save",
+              "kind": "meal",
+              "name": "鸡肉饭",
+              "unit": "g",
+              "baseAmount": 350,
+              "protein": 35,
+              "carbs": 60,
+              "fat": 10,
+              "calories": 470
+            }
+          }
+        ]
+      },
+      "latencyMs": 11116.883700000006
+    },
+    {
+      "id": "t15",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2063,
+      "outputTokens": 116,
+      "estimatedUsd": 0.0009089,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared the favorite for **BrandX yogurt** (150 g, 111 kcal, 15g protein, 6g carbs, 3g fat by BrandX). Would you like to save it to your favorites?",
+        "actions": [
+          {
+            "actionId": "9decc12e-3ec6-45b1-9067-9725147d2f36",
+            "date": "2026-09-21",
+            "action": {
+              "type": "save",
+              "kind": "food",
+              "name": "BrandX yogurt",
+              "brand": "BrandX",
+              "unit": "g",
+              "baseAmount": 150,
+              "protein": 15,
+              "carbs": 6,
+              "fat": 3,
+              "calories": 111
+            }
+          }
+        ]
+      },
+      "latencyMs": 9282.012499999983
+    },
+    {
+      "id": "t16",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2062,
+      "outputTokens": 101,
+      "estimatedUsd": 0.0008711,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared the favorite for **peanut butter** (20 g: 5g protein, 4g carbs, 10g fat, 126 kcal, estimated). Would you like to save it?",
+        "actions": [
+          {
+            "actionId": "ab6660d3-1d1c-4595-a6ef-317174085401",
+            "date": "2026-09-21",
+            "action": {
+              "type": "save",
+              "kind": "food",
+              "name": "peanut butter",
+              "unit": "g",
+              "baseAmount": 20,
+              "protein": 5,
+              "carbs": 4,
+              "fat": 10,
+              "calories": 126
+            }
+          }
+        ]
+      },
+      "latencyMs": 1700.9409999999916
+    },
+    {
+      "id": "t17",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2045,
+      "outputTokens": 87,
+      "estimatedUsd": 0.000831,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "好的！我已经为你准备好了把“无糖饮料”（330毫升，0大卡）加入常用食物的提议。请确认是否保存？",
+        "actions": [
+          {
+            "actionId": "ed7c7f79-4aa3-408b-aadf-38b29de57cbf",
+            "date": "2026-09-21",
+            "action": {
+              "type": "save",
+              "kind": "food",
+              "name": "无糖饮料",
+              "unit": "ml",
+              "baseAmount": 330,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "calories": 0
+            }
+          }
+        ]
+      },
+      "latencyMs": 2602.9929999999877
+    },
+    {
+      "id": "t18",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 2065,
+      "outputTokens": 108,
+      "estimatedUsd": 0.0008895,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a favorite for your **Breakfast combo** (2 servings: 30g protein, 80g carbs, 20g fat, 620 kcal). \n\nWould you like me to save this to your favorites?",
+        "actions": [
+          {
+            "actionId": "b5adc78b-941c-4398-a350-bc3727bdfc7e",
+            "date": "2026-09-21",
+            "action": {
+              "type": "save",
+              "kind": "meal",
+              "name": "Breakfast combo",
+              "unit": "serving",
+              "baseAmount": 2,
+              "protein": 30,
+              "carbs": 80,
+              "fat": 20,
+              "calories": 620
+            }
+          }
+        ]
+      },
+      "latencyMs": 1207.8185999999987
+    },
+    {
+      "id": "t19",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 1974,
+      "outputTokens": 57,
+      "estimatedUsd": 0.0007346999999999999,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a record for your 25-minute walk (estimated 90 kcal burned). Would you like me to save this workout?",
+        "actions": [
+          {
+            "actionId": "074242d7-f3cd-48c7-b9b2-7afa42f52bd9",
+            "date": "2026-09-21",
+            "action": {
+              "type": "workout",
+              "workoutType": "walk",
+              "durationMin": 25,
+              "calories": 90
+            }
+          }
+        ]
+      },
+      "latencyMs": 3350.6815999999817
+    },
+    {
+      "id": "t20",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 1977,
+      "outputTokens": 74,
+      "estimatedUsd": 0.0007781,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "我已经为你准备好记录了：\n* **运动**：跑步 35分钟\n* **消耗**：大约 280 千卡（估算值）\n\n请问确认要保存这条运动记录吗？",
+        "actions": [
+          {
+            "actionId": "2a784496-b109-49a2-851c-7a0698801cbb",
+            "date": "2026-09-21",
+            "action": {
+              "type": "workout",
+              "workoutType": "run",
+              "durationMin": 35,
+              "calories": 280
+            }
+          }
+        ]
+      },
+      "latencyMs": 1236.2673000000068
+    },
+    {
+      "id": "t21",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 1975,
+      "outputTokens": 57,
+      "estimatedUsd": 0.000735,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "I've prepared a log for 45 minutes of cycling (estimated 320 kcal). Would you like me to save this workout?",
+        "actions": [
+          {
+            "actionId": "4e904040-e308-438d-bf88-75f8ae70632c",
+            "date": "2026-09-21",
+            "action": {
+              "type": "workout",
+              "workoutType": "cycling",
+              "durationMin": 45,
+              "calories": 320
+            }
+          }
+        ]
+      },
+      "latencyMs": 1317.1546999999846
+    },
+    {
+      "id": "t22",
+      "repetition": 1,
+      "attempted": true,
+      "status": "pass",
+      "inputTokens": 1981,
+      "outputTokens": 68,
+      "estimatedUsd": 0.0007643,
+      "toolCorrect": true,
+      "argumentsCorrect": true,
+      "output": {
+        "reply": "为您提议记录以下运动（估算值）：\n\n- **瑜伽**：40 分钟，消耗约 100 千卡\n\n请问确认要保存这条记录吗？",
+        "actions": [
+          {
+            "actionId": "e3714935-fc84-402f-845f-f3b8bba7fddf",
+            "date": "2026-09-21",
+            "action": {
+              "type": "workout",
+              "workoutType": "yoga",
+              "durationMin": 40,
+              "calories": 100
+            }
+          }
+        ]
+      },
+      "latencyMs": 1276.9563999999955
+    },
+    {
+      "id": "t23",
+      "repetition": 1,
+      "attempted": true,
+      "status": "inconclusive",
+      "reason": "Provider failure: AI_RATE_LIMITED (HTTP 503)",
+      "latencyMs": 133.63329999998678
+    },
+    {
+      "id": "t24",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t25",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t26",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t27",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t28",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t29",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t30",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t31",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t32",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t33",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t34",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t35",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t36",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t37",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t38",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t39",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t40",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t41",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t42",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t43",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t44",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t45",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t46",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t47",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t48",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t49",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t50",
+      "repetition": 1,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t01",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t02",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t03",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t04",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t05",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t06",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t07",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t08",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t09",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t10",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t11",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t12",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t13",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t14",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t15",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t16",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t17",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t18",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t19",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t20",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t21",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t22",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t23",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t24",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t25",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t26",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t27",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t28",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t29",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t30",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t31",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t32",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t33",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t34",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t35",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t36",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t37",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t38",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t39",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t40",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t41",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t42",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t43",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t44",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t45",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t46",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t47",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t48",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t49",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t50",
+      "repetition": 2,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t01",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t02",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t03",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t04",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t05",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t06",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t07",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t08",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t09",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t10",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t11",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t12",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t13",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t14",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t15",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t16",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t17",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t18",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t19",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t20",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t21",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t22",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t23",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t24",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t25",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t26",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t27",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t28",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t29",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t30",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t31",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t32",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t33",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t34",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t35",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t36",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t37",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t38",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t39",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t40",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t41",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t42",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t43",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t44",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t45",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t46",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t47",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t48",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t49",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    },
+    {
+      "id": "t50",
+      "repetition": 3,
+      "attempted": false,
+      "status": "inconclusive",
+      "reason": "Stopped after unknown-cost request"
+    }
+  ]
+}

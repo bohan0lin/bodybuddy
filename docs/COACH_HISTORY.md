@@ -58,7 +58,9 @@ receipts. Ordinary clients cannot delete proposal tombstones independently.
    legacy bypass rejection, RLS, rollback and migration replay without Docker.
 2. Once Docker is available, run the full Supabase migration/reset/upgrade suite,
    regenerate `src/lib/database.types.ts` with `npm run db:types`, and check it.
-   The types for this migration were added manually; CLI equivalence is pending.
+   The manually added types matched CLI-generated types from CI run 35642413733
+   on 2026-09-21 after normalizing the trailing newline. That run also applied all
+   migrations on a fresh Supabase stack; the full reset/upgrade suite remains separate.
 3. Apply the migration to staging using the existing database release workflow.
 4. Set `VITE_COACH_HISTORY_ENABLED=true` for the staging branch's Preview
    environment, then redeploy. Leave Production disabled until acceptance passes.
@@ -67,6 +69,8 @@ receipts. Ordinary clients cannot delete proposal tombstones independently.
    conflicting edits from two tabs, and sign-out/sign-in with another account.
 6. Run the database tests with real concurrent connections. The embedded test
    connection verifies transition order but does not emulate simultaneous sessions.
+   Completed in CI run 35642413733: 100 actions, 1,000 successful submissions,
+   ten concurrent connections, zero duplicates, and four passing fault checks.
 7. Apply the migration to production before enabling its flag, after approval.
 
 Turning the UI flag off preserves stored history. Do not roll back the migration
